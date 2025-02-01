@@ -1,25 +1,17 @@
-#!/usr/bin/env python3
-"""
-Enhanced CLI Tool for Interactive File Selection and Content Extraction
-
-This script allows users to browse a directory, view a beautifully rendered
-tree structure of files, interactively select files, and extract their content
-with clear headers and styling.
-"""
-
-import os
 import fnmatch
-import pyperclip
+import os
 from pathlib import Path
+from typing import List, Optional
+
+import pyperclip
+import toml
 import typer
+from InquirerPy import inquirer
 from rich.console import Console
-from rich.tree import Tree
-from rich.syntax import Syntax
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from InquirerPy import inquirer
-from typing import Optional, List
-import toml
+from rich.syntax import Syntax
+from rich.tree import Tree
 
 # Create a Typer app instance with subcommands
 app = typer.Typer(
