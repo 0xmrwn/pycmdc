@@ -204,13 +204,12 @@ def build_tree(
 
 
 def clear_console():
-    """Clear the console screen."""
-    # For Windows
-    if os.name == "nt":
+    """Clear the console screen in a cross-platform way."""
+    if os.name == "nt":  # For Windows
         os.system("cls")
-    # For Unix/Linux/MacOS
-    else:
-        os.system("clear")
+    else:  # For Unix/Linux/MacOS
+        # Using ANSI escape codes for a more elegant clear
+        print("\033[H\033[J", end="")
 
 
 @app.command()
@@ -253,15 +252,10 @@ def browse(
         "--non-interactive",
         help="Select all matching files without prompting",
     ),
-    copy_to_clipboard: bool = typer.Option(
-        False,
-        "--copy",
-        "-c",
-        help="Copy output to clipboard",
-    ),
 ):
     """Browse and select files interactively."""
     # Display a welcome banner
+    clear_console()  # Clear console before showing the initial banner
     banner_text = (
         "[bold cyan]Interactive File Browser & Extractor[/bold cyan]\n"
         "Browse directories, preview content, and extract files for LLM contexts."
@@ -329,12 +323,14 @@ def browse(
 
     # Clear the console before showing file contents
     clear_console()
+    console.print("\n")  # Add a blank line for better spacing
 
-    # Prepare output text for non-console output
+    # Prepare output text
     output_text = ""
-    # For console output, we will print as we go.
     if output.lower() == "console":
-        console.rule("[bold green]Extracted File Contents[/bold green]")
+        console.print(
+            Panel("[bold green]Extracted File Contents[/bold green]", expand=False)
+        )
 
     # Process each selected file
     for file_path_str in selected_files:
@@ -348,6 +344,11 @@ def browse(
                 line_numbers=False,
                 word_wrap=True,
             )
+            # Build output_text regardless of output mode
+            output_text += f"\n<open_file>\n{file_path_str}\n"
+            output_text += f"<contents>\n{content}\n</contents>\n"
+            output_text += "</open_file>\n"
+
             if output.lower() == "console":
                 console.print("\n<open_file>")
                 console.print(file_path_str)
@@ -355,11 +356,6 @@ def browse(
                 console.print(syntax)
                 console.print("</contents>")
                 console.print("</open_file>\n")
-            else:
-                # For file output or clipboard, build plain text output
-                output_text += f"\n<open_file>\n{file_path_str}\n"
-                output_text += f"<contents>\n{content}\n</contents>\n"
-                output_text += "</open_file>\n"
         except Exception as e:
             error_msg = f"\nError reading {file_path_str}: {e}\n"
             if output.lower() == "console":
@@ -367,8 +363,8 @@ def browse(
             else:
                 output_text += error_msg
 
-    # Handle output (clipboard or file)
-    if copy_to_clipboard:
+    # Always copy to clipboard when in console mode
+    if output.lower() == "console":
         try:
             pyperclip.copy(output_text)
             console.print(Panel("Content copied to clipboard!", style="bold green"))
