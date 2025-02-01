@@ -34,7 +34,27 @@ def load_config() -> dict:
     """Load configuration from file or environment variables."""
     config = {
         "filters": [],
-        "ignore_patterns": [".git", "node_modules", "__pycache__", "*.pyc"],
+        "ignore_patterns": [
+            ".git",
+            "node_modules",
+            "__pycache__",
+            "*.pyc",
+            "venv",
+            ".venv",
+            "env",
+            ".env",
+            ".idea",
+            ".vscode",
+            ".pytest_cache",
+            "__pycache__",
+            ".coverage",
+            "htmlcov",
+            "build",
+            "dist",
+            "*.egg-info",
+            ".tox",
+            ".mypy_cache",
+        ],
         "recursive": False,
     }
 
