@@ -157,6 +157,16 @@ def build_tree(
     return tree
 
 
+def clear_console():
+    """Clear the console screen."""
+    # For Windows
+    if os.name == "nt":
+        os.system("cls")
+    # For Unix/Linux/MacOS
+    else:
+        os.system("clear")
+
+
 @app.command()
 def browse(
     directory: Optional[Path] = typer.Argument(
@@ -265,6 +275,9 @@ def browse(
             Panel("[yellow]No files selected. Exiting.[/yellow]", title="Info")
         )
         raise typer.Exit(code=0)
+
+    # Clear the console before showing file contents
+    clear_console()
 
     # Prepare output text for non-console output
     output_text = ""
