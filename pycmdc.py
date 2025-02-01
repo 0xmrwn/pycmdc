@@ -83,10 +83,24 @@ def load_config() -> dict:
 
 
 def should_ignore(path: Path, ignore_patterns: List[str]) -> bool:
-    """Check if a path should be ignored based on patterns."""
+    """
+    Check if a path should be ignored based on patterns.
+    Also checks if any parent directory matches ignore patterns.
+    """
+    # Convert path to absolute path to ensure consistent checking
+    path = path.absolute()
+
+    # First check the direct path name against patterns
     for pattern in ignore_patterns:
-        if fnmatch.fnmatch(str(path), pattern) or fnmatch.fnmatch(path.name, pattern):
+        if fnmatch.fnmatch(path.name, pattern):
             return True
+
+    # Then check each part of the path against patterns
+    for part in path.parts:
+        for pattern in ignore_patterns:
+            if fnmatch.fnmatch(part, pattern):
+                return True
+
     return False
 
 
@@ -110,10 +124,18 @@ def get_files(
     """
     files = []
     if recursive:
-        for root, _, filenames in os.walk(directory):
+        for root, dirs, filenames in os.walk(directory):
             root_path = Path(root)
+
+            # Remove ignored directories from dirs list to prevent walking into them
+            dirs[:] = [
+                d for d in dirs if not should_ignore(root_path / d, ignore_patterns)
+            ]
+
+            # Skip if current directory should be ignored
             if should_ignore(root_path, ignore_patterns):
                 continue
+
             for filename in filenames:
                 file_path = root_path / filename
                 if not should_ignore(
@@ -141,17 +163,24 @@ def build_tree(
 
         def add_branch(branch: Tree, path: Path):
             try:
+                # Get all entries and sort them (directories first, then files)
                 entries = sorted(
                     path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
                 )
+
+                # Filter out ignored entries
+                entries = [
+                    entry
+                    for entry in entries
+                    if not should_ignore(entry, ignore_patterns)
+                ]
+
             except PermissionError:
                 return
 
             for entry in entries:
-                if should_ignore(entry, ignore_patterns):
-                    continue
-
                 if entry.is_dir():
+                    # Only add directory if it contains visible files
                     sub_branch = Tree(f"[bold magenta]{entry.name}[/bold magenta]")
                     add_branch(sub_branch, entry)
                     if sub_branch.children:
@@ -162,14 +191,19 @@ def build_tree(
         add_branch(tree, directory)
     else:
         try:
-            for entry in sorted(
+            entries = sorted(
                 directory.iterdir(), key=lambda p: (not p.is_file(), p.name.lower())
-            ):
-                if (
-                    entry.is_file()
-                    and not should_ignore(entry, ignore_patterns)
-                    and file_matches_filter(entry, filters)
-                ):
+            )
+            # Filter out ignored entries
+            entries = [
+                entry
+                for entry in entries
+                if not should_ignore(entry, ignore_patterns)
+                and (entry.is_dir() or file_matches_filter(entry, filters))
+            ]
+
+            for entry in entries:
+                if entry.is_file():
                     tree.add(f"[green]{entry.name}[/green]")
         except PermissionError:
             pass
@@ -220,7 +254,7 @@ def browse(
         None,
         "--ignore",
         "-i",
-        help="Patterns to ignore (e.g., .git node_modules)",
+        help="Additional patterns to ignore (e.g., .git node_modules)",
     ),
     non_interactive: bool = typer.Option(
         False,
@@ -249,8 +283,13 @@ def browse(
         directory = Path.cwd()
     if filter is None:
         filter = config["filters"]
+
+    # Merge the default ignore patterns with any additional ones.
     if ignore is None:
         ignore = config["ignore_patterns"]
+    else:
+        ignore = config["ignore_patterns"] + ignore
+
     if recursive is None:
         recursive = config["recursive"]
 
