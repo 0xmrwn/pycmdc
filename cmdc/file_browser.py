@@ -148,7 +148,9 @@ class FileBrowser:
                     str(f.relative_to(self.directory)),
                     name=str(f.relative_to(self.directory)),
                 )
-                for f in sorted(files, key=lambda x: x.name.lower())
+                for f in sorted(
+                    files, key=lambda x: str(x.relative_to(self.directory)).lower()
+                )
             ]
 
             selected_files = inquirer.fuzzy(
