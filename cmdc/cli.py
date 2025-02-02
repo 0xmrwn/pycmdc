@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 import sys
 
+from cmdc import __version__
 from cmdc.config_manager import ConfigManager
 from cmdc.file_browser import FileBrowser
 from cmdc.output_handler import OutputHandler
@@ -13,13 +14,28 @@ from rich.console import Console
 from rich.panel import Panel
 
 app = typer.Typer(
-    help="Interactive CLI tool for browsing and selecting files for LLM contexts."
+    help="Interactive CLI tool for browsing and selecting files for LLM contexts.",
+    no_args_is_help=True,
 )
 console = Console()
 
 
+def version_callback(value: bool):
+    if value:
+        console.print(f"[bold]cmdc[/bold] (version {__version__})")
+        raise typer.Exit()
+
+
 @app.command()
 def main(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show the application version and exit.",
+        callback=version_callback,
+        is_eager=True,
+    ),
     config: bool = typer.Option(
         False,
         "--config",
