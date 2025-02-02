@@ -22,13 +22,15 @@ class OutputHandler:
     or saved to a specified file.
     """
 
-    def __init__(self, directory: Path, copy_to_clipboard: bool):
+    def __init__(
+        self, directory: Path, copy_to_clipboard: bool, print_to_console: bool = False
+    ):
         self.directory = directory
         self.copy_to_clipboard = copy_to_clipboard
+        self.print_to_console = print_to_console
         self.config_manager = ConfigManager()
-        self.ignore_patterns = self.config_manager.load_config().get(
-            "ignore_patterns", []
-        )
+        self.config = self.config_manager.load_config()
+        self.ignore_patterns = self.config.get("ignore_patterns", [])
 
     def should_ignore(self, path: Path) -> bool:
         """Check if a path should be ignored based on the ignore patterns."""
@@ -84,7 +86,8 @@ class OutputHandler:
         """
         output_text = self.create_summary_section(selected_files)
 
-        if output_mode.lower() == "console":
+        # Simply use the print_to_console setting that was determined by the CLI
+        if self.print_to_console:
             console.print(
                 Panel("[bold green]Extracted File Contents[/bold green]", expand=False)
             )
@@ -94,19 +97,20 @@ class OutputHandler:
             file_path = self.directory / file_path_str
             try:
                 content = file_path.read_text(encoding="utf-8")
-                syntax = Syntax(
-                    content,
-                    file_path.suffix.lstrip("."),
-                    theme="monokai",
-                    line_numbers=False,
-                    word_wrap=True,
-                )
-                # Append file content in a marked-up format
+                # Always add to output_text for clipboard/file
                 output_text += f"\n<open_file>\n{file_path_str}\n"
                 output_text += f"<contents>\n{content}\n</contents>\n"
                 output_text += "</open_file>\n"
 
-                if output_mode.lower() == "console":
+                # Only print to console if enabled
+                if self.print_to_console:
+                    syntax = Syntax(
+                        content,
+                        file_path.suffix.lstrip("."),
+                        theme="monokai",
+                        line_numbers=False,
+                        word_wrap=True,
+                    )
                     console.print("\n<open_file>")
                     console.print(file_path_str)
                     console.print("<contents>")
@@ -115,10 +119,9 @@ class OutputHandler:
                     console.print("</open_file>\n")
             except Exception as e:
                 error_msg = f"\nError reading {file_path_str}: {e}\n"
-                if output_mode.lower() == "console":
+                output_text += error_msg
+                if self.print_to_console:
                     console.print(f"[red]{error_msg}[/red]")
-                else:
-                    output_text += error_msg
 
         if output_mode.lower() == "console" and self.copy_to_clipboard:
             try:

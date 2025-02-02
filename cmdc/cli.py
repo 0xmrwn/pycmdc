@@ -2,6 +2,7 @@
 import typer
 from pathlib import Path
 from typing import List, Optional
+import sys
 
 from cmdc.config_manager import ConfigManager
 from cmdc.file_browser import FileBrowser
@@ -75,7 +76,7 @@ def main(
         "Overrides config setting if provided and recursive mode is not used.",
     ),
     encoding_model: Optional[str] = typer.Option(
-        None,
+        "o200k_base",
         "--encoding-model",
         help="Token encoding model to use for token counting (overrides config).",
     ),
@@ -144,8 +145,19 @@ def main(
     )
     selected_files, total_tokens = file_browser.scan_and_select_files(non_interactive)
 
+    # Check if -o was explicitly provided by checking sys.argv
+    output_explicitly_provided = any(arg in ["--output", "-o"] for arg in sys.argv[1:])
+
+    should_print_to_console = (
+        output_explicitly_provided and output.lower() == "console"
+    ) or (not output_explicitly_provided and config.get("print_to_console", False))
+
     # Instantiate the OutputHandler to process and output file contents.
-    output_handler = OutputHandler(directory, config.get("copy_to_clipboard", True))
+    output_handler = OutputHandler(
+        directory=directory,
+        copy_to_clipboard=config.get("copy_to_clipboard", True),
+        print_to_console=should_print_to_console,
+    )
     output_handler.process_output(selected_files, output)
 
     # If content was copied to clipboard (and we're in console mode),
