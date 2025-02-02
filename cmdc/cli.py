@@ -67,6 +67,12 @@ def main(
         "--non-interactive",
         help="Select all matching files without prompting.",
     ),
+    depth: Optional[int] = typer.Option(
+        None,
+        "--depth",
+        "-d",
+        help="Maximum depth for subdirectory exploration. Overrides config setting if provided and recursive mode is not used.",
+    ),
 ):
     """
     Interactive CLI tool for browsing and selecting files for LLM contexts.
@@ -101,11 +107,24 @@ def main(
         ignore = config.get("ignore_patterns", [])
     else:
         ignore = config.get("ignore_patterns", []) + list(ignore)
-    if recursive is None:
+
+    # Handle recursive and depth flags with proper priority:
+    # 1. If --recursive is explicitly set (True/False), it takes highest priority
+    # 2. If --depth is explicitly set, it overrides recursive mode
+    # 3. Otherwise, fall back to config values
+    if recursive is not None:
+        # Explicit --recursive flag takes priority
+        depth = None if recursive else config.get("depth", 1)
+    elif depth is not None:
+        # Explicit --depth flag overrides recursive mode
+        recursive = False
+    else:
+        # Fall back to config values
         recursive = config.get("recursive", False)
+        depth = None if recursive else config.get("depth", 1)
 
     # Instantiate the FileBrowser to scan and select files.
-    file_browser = FileBrowser(directory, recursive, filters, ignore)
+    file_browser = FileBrowser(directory, recursive, filters, ignore, depth)
     selected_files = file_browser.scan_and_select_files(non_interactive)
 
     # Instantiate the OutputHandler to process and output file contents.
