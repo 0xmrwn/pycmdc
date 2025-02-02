@@ -71,6 +71,7 @@ class ConfigManager:
             "ignore_patterns": ConfigManager.get_default_ignore_patterns(),
             "recursive": False,
             "copy_to_clipboard": True,
+            "depth": 1,  # Default depth: only immediate subdirectories
         }
 
     def interactive_init(self) -> dict:
@@ -92,6 +93,18 @@ class ConfigManager:
             message="Do you want to browse directories recursively by default?",
             default=False,
         ).execute()
+
+        # Ask for default depth (only used if recursive mode is not selected)
+        default_depth_str = inquirer.text(
+            message="Enter default scanning depth (e.g., 1 for immediate children):",
+            default="1",
+        ).execute()
+        try:
+            default_depth = int(default_depth_str)
+            if default_depth < 1:
+                default_depth = 1
+        except ValueError:
+            default_depth = 1
 
         default_patterns = self.get_default_ignore_patterns()
         use_default_ignores = inquirer.confirm(
@@ -142,6 +155,7 @@ class ConfigManager:
             "recursive": recursive,
             "ignore_patterns": ignore_patterns,
             "filters": filters,
+            "depth": default_depth,
         }
 
     def get_file_config(self) -> dict:

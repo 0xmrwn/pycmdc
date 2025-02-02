@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 
 import fnmatch
 import os
@@ -28,11 +28,13 @@ class FileBrowser:
         recursive: bool,
         filters: List[str],
         ignore_patterns: List[str],
+        depth: Optional[int] = None,
     ):
         self.directory = directory
         self.recursive = recursive
         self.filters = filters
         self.ignore_patterns = ignore_patterns
+        self.depth = depth
 
     def should_ignore(self, path: Path) -> bool:
         """
@@ -56,6 +58,8 @@ class FileBrowser:
     def walk_valid_paths(self) -> Iterable[Path]:
         """
         Yield valid Path objects (directories and files) that pass the ignore checks.
+        If recursive mode is enabled, use full recursion via os.walk.
+        Otherwise, if a depth is set, use a limited recursion approach.
         """
         if self.recursive:
             for root, dirs, filenames in os.walk(self.directory):
@@ -69,7 +73,26 @@ class FileBrowser:
                     fpath = root_path / fname
                     if not self.should_ignore(fpath):
                         yield fpath
+        elif self.depth is not None:
+            # Use a limited depth traversal.
+            def limited_walk(current: Path, current_level: int):
+                # Do not yield the root directory itself; yield only when current_level > 0.
+                # When depth==1, only immediate children will be yielded.
+                try:
+                    # Recurse only if the current level is less than allowed depth.
+                    if current_level > 0 and not self.should_ignore(current):
+                        yield current
+                    if current.is_dir() and current_level < self.depth:
+                        for child in current.iterdir():
+                            if self.should_ignore(child):
+                                continue
+                            yield from limited_walk(child, current_level + 1)
+                except PermissionError:
+                    pass
+
+            yield from limited_walk(self.directory, 0)
         else:
+            # Non-recursive mode (only immediate children)
             try:
                 for item in self.directory.iterdir():
                     if not self.should_ignore(item):
@@ -123,7 +146,7 @@ class FileBrowser:
         console.print(
             Panel(
                 tree,
-                title="[bold underline]Directory Structure[/bold underline]",
+                title=f"[bold underline]Directory Structure[/bold underline] {'(Recursive)' if self.recursive else f'(Depth: {self.depth})' if self.depth else '(Non-recursive)'}",
                 border_style="blue",
             )
         )

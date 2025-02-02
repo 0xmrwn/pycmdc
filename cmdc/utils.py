@@ -34,25 +34,36 @@ def build_directory_tree(
     """
     tree = Tree(style_directory(directory.name or str(directory)))
 
+    # Get all valid paths from the walk function
+    valid_paths = list(walk_function())
+
+    # Create a mapping of parent directories to their children
     paths_by_parent: Dict[Path, List[Path]] = {}
-    for path in walk_function():
+    for path in valid_paths:
         if path == directory:
             continue
         parent = path.parent
-        paths_by_parent.setdefault(parent, []).append(path)
+        if parent not in paths_by_parent:
+            paths_by_parent[parent] = []
+        paths_by_parent[parent].append(path)
 
     def add_to_tree(current_dir: Path, current_tree: Tree) -> None:
+        """Recursively add paths to the tree."""
         if current_dir not in paths_by_parent:
             return
+
         # Sort paths: directories first, then files
         paths = sorted(
             paths_by_parent[current_dir],
             key=lambda p: (not p.is_dir(), p.name.lower()),
         )
+
         for path in paths:
             if path.is_dir():
-                sub_tree = current_tree.add(style_directory(path.name))
-                add_to_tree(path, sub_tree)
+                # Only add directories that are in our valid paths
+                if path in paths_by_parent or path in valid_paths:
+                    sub_tree = current_tree.add(style_directory(path.name))
+                    add_to_tree(path, sub_tree)
             elif file_filter(path):
                 current_tree.add(style_file(path.name))
 
