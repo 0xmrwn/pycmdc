@@ -44,9 +44,9 @@ def main(
         "-o",
         help="Output mode: 'console' or a filename to save the extracted content.",
     ),
-    filter: Optional[List[str]] = typer.Option(
+    filters: Optional[List[str]] = typer.Option(
         None,
-        "--filter",
+        "--filters",
         "-f",
         help="Filter files by extension (e.g., .py .js).",
     ),
@@ -95,8 +95,8 @@ def main(
     # Use command-line arguments to override or complement configuration defaults.
     if directory is None:
         directory = Path.cwd()
-    if filter is None:
-        filter = config.get("filters", [])
+    if filters is None:
+        filters = config.get("filters", [])
     if ignore is None:
         ignore = config.get("ignore_patterns", [])
     else:
@@ -105,7 +105,7 @@ def main(
         recursive = config.get("recursive", False)
 
     # Instantiate the FileBrowser to scan and select files.
-    file_browser = FileBrowser(directory, recursive, filter, ignore)
+    file_browser = FileBrowser(directory, recursive, filters, ignore)
     selected_files = file_browser.scan_and_select_files(non_interactive)
 
     # Instantiate the OutputHandler to process and output file contents.
