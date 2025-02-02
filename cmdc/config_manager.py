@@ -79,8 +79,8 @@ class ConfigManager:
             "tiktoken_model": "o200k_base",
         }
 
-    def interactive_init(self) -> dict:
-        """Run the interactive configuration initialization process."""
+    def interactive_config(self) -> dict:
+        """Run the interactive configuration setup process."""
         console.print(
             Panel(
                 "[bold cyan]Welcome to CMDC Configuration![/bold cyan]\n"
@@ -187,7 +187,7 @@ class ConfigManager:
                     "[yellow]Welcome to CMDC![/yellow]\n"
                     "You're running with default settings. "
                     "To customize the behavior, run:\n"
-                    "[bold cyan]cmdc --init[/bold cyan]",
+                    "[bold cyan]cmdc --config[/bold cyan]",
                     title="Notice",
                     border_style="yellow",
                 )
@@ -233,8 +233,8 @@ class ConfigManager:
         config.update(self.get_env_config())
         return config
 
-    def handle_init(self, force: bool) -> None:
-        """Handle the interactive initialization process."""
+    def handle_config(self, force: bool) -> None:
+        """Handle the interactive configuration setup process."""
         if self.config_path.exists() and not force:
             overwrite = inquirer.confirm(
                 message=(
@@ -246,7 +246,7 @@ class ConfigManager:
                 console.print("[yellow]Configuration unchanged.[/yellow]")
                 raise typer.Exit()
         self.ensure_config_dir()
-        config_data = self.interactive_init()
+        config_data = self.interactive_config()
         try:
             with open(self.config_path, "w") as f:
                 toml.dump({"cmdc": config_data}, f)
