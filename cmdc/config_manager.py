@@ -7,6 +7,7 @@ import typer
 from InquirerPy import inquirer
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
 
 console = Console()
 
@@ -89,17 +90,12 @@ class ConfigManager:
             )
         )
 
-        copy_to_clipboard = inquirer.confirm(
-            message="Do you want to automatically copy selected content to clipboard?",
-            default=True,
-        ).execute()
-
+        # Core browsing behavior
         recursive = inquirer.confirm(
             message="Do you want to browse directories recursively by default?",
             default=False,
         ).execute()
 
-        # Ask for default depth (only used if recursive mode is not selected)
         default_depth_str = inquirer.text(
             message="Enter default scanning depth (e.g., 1 for immediate children):",
             default="1",
@@ -111,6 +107,18 @@ class ConfigManager:
         except ValueError:
             default_depth = 1
 
+        # Output preferences
+        copy_to_clipboard = inquirer.confirm(
+            message="Do you want to automatically copy selected content to clipboard?",
+            default=True,
+        ).execute()
+
+        print_to_console = inquirer.confirm(
+            message="Do you want to print the context dump to console by default?",
+            default=False,
+        ).execute()
+
+        # File filtering
         default_patterns = self.get_default_ignore_patterns()
         use_default_ignores = inquirer.confirm(
             message="Would you like to use the recommended ignore patterns?",
@@ -138,7 +146,7 @@ class ConfigManager:
             if pattern:
                 ignore_patterns.append(pattern)
 
-        # Get file filters
+        # File extension filters
         use_filters = inquirer.confirm(
             message="Would you like to set default file extension filters?",
             default=False,
@@ -158,25 +166,20 @@ class ConfigManager:
                     ext = f".{ext}"
                 filters.append(ext)
 
-        # Ask for token encoding model for tiktoken
+        # Advanced settings
         encoding_model = inquirer.text(
             message="Enter token encoding model to use (default: o200k_base):",
             default="o200k_base",
         ).execute()
 
-        print_to_console = inquirer.confirm(
-            message="Do you want to print the context dump to console by default?",
-            default=False,
-        ).execute()
-
         return {
-            "copy_to_clipboard": copy_to_clipboard,
             "recursive": recursive,
+            "depth": default_depth,
+            "copy_to_clipboard": copy_to_clipboard,
+            "print_to_console": print_to_console,
             "ignore_patterns": ignore_patterns,
             "filters": filters,
-            "depth": default_depth,
             "tiktoken_model": encoding_model,
-            "print_to_console": print_to_console,
         }
 
     def get_file_config(self) -> dict:
@@ -264,3 +267,50 @@ class ConfigManager:
                 )
             )
             raise typer.Exit(1)
+
+    def display_config(self) -> None:
+        """Display the current configuration in a nicely formatted way."""
+        # Check if config exists and load appropriate config
+        has_config = self.config_path.exists()
+        if has_config:
+            current_config = self.get_file_config()
+            title = "[bold green]Current Configuration[/bold green]"
+            description = f"Configuration loaded from: {self.config_path}"
+        else:
+            current_config = self.get_default_config()
+            title = "[bold yellow]Default Configuration[/bold yellow]"
+            description = (
+                "[yellow]No configuration file found. "
+                "These are the default settings being used.[/yellow]\n"
+                "To create a custom configuration, run: [bold cyan]cmdc --config[/bold cyan]"
+            )
+
+        # Create and configure the table
+        table = Table(title=title, show_header=True, header_style="bold cyan")
+        table.add_column("Setting", style="cyan")
+        table.add_column("Value", style="green")
+
+        # Add rows for each configuration item
+        for key, value in current_config.items():
+            if isinstance(value, list):
+                # Format lists nicely
+                if not value:
+                    formatted_value = "[italic]empty[/italic]"
+                else:
+                    formatted_value = "\n".join(f"• {item}" for item in value)
+            elif isinstance(value, bool):
+                # Format booleans with color
+                formatted_value = (
+                    "[green]enabled[/green]" if value else "[red]disabled[/red]"
+                )
+            else:
+                formatted_value = str(value)
+
+            # Convert key from snake_case to Title Case for display
+            display_key = key.replace("_", " ").title()
+            table.add_row(display_key, formatted_value)
+
+        # Display the configuration
+        console.print("\n" + description + "\n")
+        console.print(table)
+        console.print()  # Add a newline for better spacing
