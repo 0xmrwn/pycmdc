@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Tuple
 
 import fnmatch
 import os
@@ -8,10 +8,17 @@ from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    TimeRemainingColumn,
+)
 from rich.tree import Tree
 
-from cmdc.utils import build_directory_tree
+from cmdc.utils import build_directory_tree, count_tokens
 
 console = Console()
 
@@ -29,12 +36,14 @@ class FileBrowser:
         filters: List[str],
         ignore_patterns: List[str],
         depth: Optional[int] = None,
+        encoding_model: str = "o200k_base",
     ):
         self.directory = directory
         self.recursive = recursive
         self.filters = filters
         self.ignore_patterns = ignore_patterns
         self.depth = depth
+        self.encoding_model = encoding_model
 
     def should_ignore(self, path: Path) -> bool:
         """
@@ -124,10 +133,13 @@ class FileBrowser:
             style_file=lambda x: f"[green]{x}[/green]",
         )
 
-    def scan_and_select_files(self, non_interactive: bool) -> List[str]:
+    def scan_and_select_files(self, non_interactive: bool) -> Tuple[List[str], int]:
         """
-        Scan the directory and prompt the user to select files
-        (unless in non-interactive mode).
+        Scan the directory and prompt the user to select files (unless in non-interactive mode).
+        Returns:
+            A tuple containing:
+              - List of selected file paths (relative to the root directory).
+              - Total token count (integer) for the selected files.
         """
         with Progress(
             SpinnerColumn(),
@@ -142,6 +154,29 @@ class FileBrowser:
                 Panel("[red]No files found matching the criteria.[/red]", title="Error")
             )
             raise typer.Exit(code=1)
+
+        # Build a mapping: relative file path -> token count BEFORE showing the tree
+        token_counts = {}
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            expand=True,
+        ) as progress:
+            task = progress.add_task(
+                description="[bold green]Counting tokens...",
+                total=len(files),
+            )
+            for f in files:
+                relative_path = str(f.relative_to(self.directory))
+                try:
+                    content = f.read_text(encoding="utf-8")
+                    token_count = count_tokens(content, self.encoding_model)
+                    token_counts[relative_path] = token_count
+                except Exception:
+                    token_counts[relative_path] = 0
+                progress.advance(task)
 
         tree = self.build_tree()
         console.print(
@@ -174,17 +209,37 @@ class FileBrowser:
 
         if non_interactive:
             selected_files = [str(f.relative_to(self.directory)) for f in files]
+            total_tokens = sum(token_counts.values())
+            return selected_files, total_tokens
         else:
-            # Create choices list with relative paths
+            # Create choices with the token count appended to the file name.
             choices = [
                 Choice(
-                    str(f.relative_to(self.directory)),
-                    name=str(f.relative_to(self.directory)),
+                    str(relative_path),
+                    name=f"{relative_path} [{token_counts.get(relative_path, 0)} tokens]",
                 )
-                for f in sorted(
-                    files, key=lambda x: str(x.relative_to(self.directory)).lower()
+                for relative_path in sorted(
+                    token_counts.keys(), key=lambda x: x.lower()
                 )
             ]
+
+            # Helper to extract the relative path from a choice's display string.
+            def extract_relative(display_str: str) -> str:
+                # Assumes the display string is of the form: "path [X tokens]"
+                return display_str.split(" [")[0]
+
+            # Custom transformer: shows both file count and total token count.
+            def transformer(selected):
+                if not selected:
+                    return "No files selected"
+                # 'selected' is a list of display strings, so extract the relative path for each.
+                total = sum(
+                    token_counts.get(extract_relative(item), 0) for item in selected
+                )
+                return (
+                    f"{len(selected)} file{'s' if len(selected) != 1 else ''} selected, "
+                    f"total {total} tokens"
+                )
 
             selected_files = inquirer.fuzzy(
                 message="Select files to extract (type to search):",
@@ -195,9 +250,7 @@ class FileBrowser:
                 instruction="Use Tab to select/unselect, type to search",
                 border=True,
                 max_height=8,
-                transformer=lambda result: (
-                    f"{len(result)} file{'s' if len(result) != 1 else ''} selected"
-                ),
+                transformer=transformer,
                 multiselect=True,
                 info=True,
                 marker=" ◉ ",
@@ -208,12 +261,16 @@ class FileBrowser:
                     "toggle-all": [{"key": "c-a"}, {"key": "c-d"}],
                     "interrupt": [{"key": "c-c"}],
                 },
+                # The filter ensures that the value returned by execute() is the relative path,
+                # not the decorated display string.
+                filter=lambda result: [extract_relative(item) for item in result],
             ).execute()
 
-        if not selected_files:
-            console.print(
-                Panel("[yellow]No files selected. Exiting.[/yellow]", title="Info")
-            )
-            raise typer.Exit(code=0)
+            if not selected_files:
+                console.print(
+                    Panel("[yellow]No files selected. Exiting.[/yellow]", title="Info")
+                )
+                raise typer.Exit(code=0)
 
-        return selected_files
+            total_tokens = sum(token_counts.get(item, 0) for item in selected_files)
+            return selected_files, total_tokens

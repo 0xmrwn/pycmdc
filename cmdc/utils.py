@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Callable, Iterable
 from rich.tree import Tree
+import tiktoken
 
 
 def clear_console() -> None:
@@ -69,3 +70,21 @@ def build_directory_tree(
 
     add_to_tree(directory, tree)
     return tree
+
+
+def count_tokens(text: str, encoding_name: str = "o200k_base") -> int:
+    """
+    Count the number of tokens in the given text using the specified tiktoken encoding.
+
+    Args:
+        text: The input text.
+        encoding_name: The name of the tiktoken encoding to use.
+
+    Returns:
+        The number of tokens in the text.
+    """
+    try:
+        encoding = tiktoken.get_encoding(encoding_name)
+    except Exception:
+        encoding = tiktoken.get_encoding("o200k_base")
+    return len(encoding.encode(text))
