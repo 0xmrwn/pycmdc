@@ -133,7 +133,7 @@ class FileBrowser:
             Panel(
                 "[bold]Keyboard Shortcuts:[/bold]\n"
                 "↑/↓: Navigate • Space: Select • Enter: Confirm\n"
-                "Type to Search • Ctrl+A: Toggle All",
+                "Type to Search • Ctrl+A: Select All • Ctrl+D: Toggle All",
                 title="[bold]Instructions[/bold]",
                 border_style="green",
             )
@@ -168,7 +168,7 @@ class FileBrowser:
                 keybindings={
                     "answer": [{"key": "enter"}],
                     "toggle": [{"key": "tab"}],
-                    "toggle-all": [{"key": "c-a"}],
+                    "toggle-all": [{"key": "c-a"}, {"key": "c-d"}],
                     "interrupt": [{"key": "c-c"}],
                 },
             ).execute()
