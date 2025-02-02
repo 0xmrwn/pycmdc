@@ -74,6 +74,11 @@ def main(
         help="Maximum depth for subdirectory exploration. "
         "Overrides config setting if provided and recursive mode is not used.",
     ),
+    encoding_model: Optional[str] = typer.Option(
+        None,
+        "--encoding-model",
+        help="Token encoding model to use for token counting (overrides config).",
+    ),
 ):
     """
     Interactive CLI tool for browsing and selecting files for LLM contexts.
@@ -98,6 +103,10 @@ def main(
 
     # Load the layered configuration.
     config = config_manager.load_config()
+
+    # Override tiktoken model if provided on the command line
+    if encoding_model is not None:
+        config["tiktoken_model"] = encoding_model
 
     # Use command-line arguments to override or complement configuration defaults.
     if directory is None:
@@ -125,12 +134,28 @@ def main(
         depth = None if recursive else config.get("depth", 1)
 
     # Instantiate the FileBrowser to scan and select files.
-    file_browser = FileBrowser(directory, recursive, filters, ignore, depth)
-    selected_files = file_browser.scan_and_select_files(non_interactive)
+    file_browser = FileBrowser(
+        directory,
+        recursive,
+        filters,
+        ignore,
+        depth,
+        encoding_model=config.get("tiktoken_model", "o200k_base"),
+    )
+    selected_files, total_tokens = file_browser.scan_and_select_files(non_interactive)
 
     # Instantiate the OutputHandler to process and output file contents.
     output_handler = OutputHandler(directory, config.get("copy_to_clipboard", True))
     output_handler.process_output(selected_files, output)
+
+    # If content was copied to clipboard (and we're in console mode),
+    # display the total tokens (this information is not part of the copied content).
+    if output.lower() == "console" and config.get("copy_to_clipboard", True):
+        console.print(
+            Panel(
+                f"Total tokens copied to clipboard: {total_tokens}", style="bold green"
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -75,6 +75,7 @@ class ConfigManager:
             "recursive": False,
             "copy_to_clipboard": True,
             "depth": 1,  # Default depth: only immediate subdirectories
+            "tiktoken_model": "o200k_base",
         }
 
     def interactive_init(self) -> dict:
@@ -156,12 +157,19 @@ class ConfigManager:
                     ext = f".{ext}"
                 filters.append(ext)
 
+        # Ask for token encoding model for tiktoken
+        encoding_model = inquirer.text(
+            message="Enter token encoding model to use (default: o200k_base):",
+            default="o200k_base",
+        ).execute()
+
         return {
             "copy_to_clipboard": copy_to_clipboard,
             "recursive": recursive,
             "ignore_patterns": ignore_patterns,
             "filters": filters,
             "depth": default_depth,
+            "tiktoken_model": encoding_model,
         }
 
     def get_file_config(self) -> dict:
