@@ -25,6 +25,11 @@ def main(
         "--config",
         help="Run interactive configuration setup.",
     ),
+    config_show: bool = typer.Option(
+        False,
+        "--config-show",
+        help="Display current configuration settings.",
+    ),
     force: bool = typer.Option(
         False,
         "--force",
@@ -93,6 +98,10 @@ def main(
 
     if config:
         config_manager.handle_config(force)
+        raise typer.Exit()
+
+    if config_show:
+        config_manager.display_config()
         raise typer.Exit()
 
     clear_console()
