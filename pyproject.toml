@@ -1,24 +1,24 @@
-[project]
+[tool.poetry]
 name = "pycmdc"
 version = "0.1.0"
 description = "An interactive CLI tool for browsing, selecting, and extracting file contents with a rich tree view and intuitive navigation."
-authors = [
-    {name = "0xmrwn", email = "niches-anode0k@icloud.com"}
-]
+authors = ["0xmrwn <niches-anode0k@icloud.com>"]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.12,<4.0"
-
-dependencies = [
-    "typer>=0.15.1,<0.16.0",
-    "rich>=13.9.4,<14.0.0",
-    "inquirerpy>=0.3.4,<0.4.0",
-    "pyperclip>=1.9.0,<2.0.0",
-    "toml>=0.10.2,<0.11.0",
+packages = [
+    { include = "cmdc" }
 ]
 
-[project.scripts]
-cmdc = "pycmdc:app" 
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0"
+typer = ">=0.15.1,<0.16.0"
+rich = ">=13.9.4,<14.0.0"
+inquirerpy = ">=0.3.4,<0.4.0"
+pyperclip = ">=1.9.0,<2.0.0"
+toml = ">=0.10.2,<0.11.0"
+
+[tool.poetry.scripts]
+cmdc = "cmdc.__main__:app"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
