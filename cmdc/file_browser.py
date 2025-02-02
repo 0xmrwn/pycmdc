@@ -5,6 +5,7 @@ import fnmatch
 import os
 import typer
 from InquirerPy import inquirer
+from InquirerPy.base.control import Choice
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -148,14 +149,49 @@ class FileBrowser:
             )
         )
 
+        # Print instructions in a separate panel
+        console.print(
+            Panel(
+                "[bold]Keyboard Shortcuts:[/bold]\n"
+                "↑/↓: Navigate • Space: Select • Enter: Confirm\n"
+                "Type to Search • Ctrl+A: Toggle All",
+                title="[bold]Instructions[/bold]",
+                border_style="green",
+            )
+        )
+
         if non_interactive:
             selected_files = [str(f.relative_to(self.directory)) for f in files]
         else:
-            choices = [str(f.relative_to(self.directory)) for f in files]
-            selected_files = inquirer.checkbox(
-                message="Select files to extract:",
+            # Create choices list with relative paths
+            choices = [
+                Choice(
+                    str(f.relative_to(self.directory)),
+                    name=str(f.relative_to(self.directory)),
+                )
+                for f in sorted(files, key=lambda x: x.name.lower())
+            ]
+
+            selected_files = inquirer.fuzzy(
+                message="Select files to extract (type to search):",
                 choices=choices,
                 cycle=True,
+                validate=lambda result: len(result) > 0,
+                invalid_message="Please select at least one file",
+                instruction="Use Tab to select/unselect, type to search",
+                border=True,
+                height="70%",
+                transformer=lambda result: f"{len(result)} file{'s' if len(result) != 1 else ''} selected",
+                multiselect=True,
+                info=True,
+                marker="◉ ",
+                marker_pl="○ ",
+                keybindings={
+                    "answer": [{"key": "enter"}],
+                    "toggle": [{"key": "tab"}],
+                    "toggle-all": [{"key": "c-a"}],
+                    "interrupt": [{"key": "c-c"}],
+                },
             ).execute()
 
         if not selected_files:
