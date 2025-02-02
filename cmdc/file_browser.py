@@ -180,7 +180,7 @@ class FileBrowser:
                 invalid_message="Please select at least one file",
                 instruction="Use Tab to select/unselect, type to search",
                 border=True,
-                height="70%",
+                max_height=8,
                 transformer=lambda result: f"{len(result)} file{'s' if len(result) != 1 else ''} selected",
                 multiselect=True,
                 info=True,
