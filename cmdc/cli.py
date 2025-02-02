@@ -20,10 +20,10 @@ console = Console()
 
 @app.command()
 def main(
-    init: bool = typer.Option(
+    config: bool = typer.Option(
         False,
-        "--init",
-        help="Run interactive configuration initialization.",
+        "--config",
+        help="Run interactive configuration setup.",
     ),
     force: bool = typer.Option(
         False,
@@ -85,14 +85,14 @@ def main(
     Interactive CLI tool for browsing and selecting files for LLM contexts.
 
     By default, running `cmdc` will browse the current directory. Use the options
-    to modify the behavior. To run the configuration initialization, use the `--init`
+    to modify the behavior. To run the configuration initialization, use the `--config`
     flag (with `--force` to override an existing configuration).
     """
     # Create a ConfigManager instance to load and (if needed) initialize configuration.
     config_manager = ConfigManager()
 
-    if init:
-        config_manager.handle_init(force)
+    if config:
+        config_manager.handle_config(force)
         raise typer.Exit()
 
     clear_console()
