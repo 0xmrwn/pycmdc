@@ -35,6 +35,16 @@ def main(
         "--force",
         help="Force reinitialization even if a configuration exists.",
     ),
+    list_ignore: bool = typer.Option(
+        False,
+        "--list-ignore",
+        help="Display the full list of ignore patterns in a detailed view.",
+    ),
+    add_ignore: Optional[List[str]] = typer.Option(
+        None,
+        "--add-ignore",
+        help="Add new patterns to the ignore list in the configuration.",
+    ),
     directory: Optional[Path] = typer.Argument(
         None,
         exists=True,
@@ -102,6 +112,14 @@ def main(
 
     if config_show:
         config_manager.display_config()
+        raise typer.Exit()
+
+    if list_ignore:
+        config_manager.display_ignore_patterns()
+        raise typer.Exit()
+
+    if add_ignore:
+        config_manager.add_ignore_patterns(add_ignore)
         raise typer.Exit()
 
     clear_console()
