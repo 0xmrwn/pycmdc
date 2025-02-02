@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Iterable, Dict
+from typing import List, Iterable
 
 import fnmatch
 import os
@@ -10,6 +10,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.tree import Tree
+
+from cmdc.utils import build_directory_tree
 
 console = Console()
 
@@ -91,36 +93,13 @@ class FileBrowser:
 
     def build_tree(self) -> Tree:
         """Build and return a Rich Tree representing the directory structure."""
-        tree = Tree(
-            f"[bold blue]{self.directory.name or str(self.directory)}[/bold blue]"
+        return build_directory_tree(
+            directory=self.directory,
+            walk_function=self.walk_valid_paths,
+            file_filter=self.file_matches_filter,
+            style_directory=lambda x: f"[bold magenta]{x}[/bold magenta]",
+            style_file=lambda x: f"[green]{x}[/green]",
         )
-
-        paths_by_parent: Dict[Path, List[Path]] = {}
-        for path in self.walk_valid_paths():
-            if path == self.directory:
-                continue
-            parent = path.parent
-            paths_by_parent.setdefault(parent, []).append(path)
-
-        def add_to_tree(current_dir: Path, current_tree: Tree) -> None:
-            if current_dir not in paths_by_parent:
-                return
-            # Sort paths: directories first, then files
-            paths = sorted(
-                paths_by_parent[current_dir],
-                key=lambda p: (not p.is_dir(), p.name.lower()),
-            )
-            for path in paths:
-                if path.is_dir():
-                    sub_tree = current_tree.add(
-                        f"[bold magenta]{path.name}[/bold magenta]"
-                    )
-                    add_to_tree(path, sub_tree)
-                elif self.file_matches_filter(path):
-                    current_tree.add(f"[green]{path.name}[/green]")
-
-        add_to_tree(self.directory, tree)
-        return tree
 
     def scan_and_select_files(self, non_interactive: bool) -> List[str]:
         """
