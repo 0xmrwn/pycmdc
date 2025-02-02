@@ -1,7 +1,7 @@
 import fnmatch
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Iterable, Dict
 
 import pyperclip
 import toml
@@ -146,16 +146,18 @@ def interactive_init() -> dict:
     }
 
 
-def load_config() -> dict:
-    """Load configuration from file or environment variables."""
-    config = {
+def get_default_config() -> dict:
+    """Get the default configuration."""
+    return {
         "filters": [],
         "ignore_patterns": get_default_ignore_patterns(),
         "recursive": False,
         "copy_to_clipboard": True,
     }
 
-    # Check if this is first run (no config file exists)
+
+def get_file_config() -> dict:
+    """Load configuration from file."""
     if not DEFAULT_CONFIG_PATH.exists():
         console.print(
             Panel(
@@ -166,27 +168,54 @@ def load_config() -> dict:
                 border_style="yellow",
             )
         )
+        return {}
 
-    # Load from config file if it exists
-    else:
-        try:
-            file_config = toml.load(DEFAULT_CONFIG_PATH)
-            config.update(file_config.get("cmdc", {}))
-        except Exception as e:
-            console.print(
-                Panel(
-                    f"[yellow]Warning:[/yellow] Error reading config file: {e}",
-                    style="yellow",
-                )
+    try:
+        file_config = toml.load(DEFAULT_CONFIG_PATH)
+        return file_config.get("cmdc", {})
+    except Exception as e:
+        console.print(
+            Panel(
+                f"[yellow]Warning:[/yellow] Error reading config file: {e}",
+                style="yellow",
             )
+        )
+        return {}
 
-    # Override with environment variables if they exist
+
+def get_env_config() -> dict:
+    """Load configuration from environment variables."""
+    env_config = {}
+
     if os.getenv("CMDC_FILTERS"):
-        config["filters"] = os.getenv("CMDC_FILTERS").split(",")
+        env_config["filters"] = os.getenv("CMDC_FILTERS").split(",")
     if os.getenv("CMDC_IGNORE"):
-        config["ignore_patterns"] = os.getenv("CMDC_IGNORE").split(",")
+        env_config["ignore_patterns"] = os.getenv("CMDC_IGNORE").split(",")
     if os.getenv("CMDC_RECURSIVE"):
-        config["recursive"] = os.getenv("CMDC_RECURSIVE").lower() == "true"
+        env_config["recursive"] = os.getenv("CMDC_RECURSIVE").lower() == "true"
+    if os.getenv("CMDC_COPY_CLIPBOARD"):
+        env_config["copy_to_clipboard"] = (
+            os.getenv("CMDC_COPY_CLIPBOARD").lower() == "true"
+        )
+
+    return env_config
+
+
+def load_config() -> dict:
+    """
+    Load configuration using a layered approach:
+    1. Start with defaults
+    2. Update with file config
+    3. Update with environment variables
+    """
+    # Start with default configuration
+    config = get_default_config()
+
+    # Layer 2: File configuration
+    config.update(get_file_config())
+
+    # Layer 3: Environment variables
+    config.update(get_env_config())
 
     return config
 
@@ -194,23 +223,13 @@ def load_config() -> dict:
 def should_ignore(path: Path, ignore_patterns: List[str]) -> bool:
     """
     Check if a path should be ignored based on patterns.
-    Also checks if any parent directory matches ignore patterns.
+    Simplified version that checks all path parts against all patterns at once.
     """
-    # Convert path to absolute path to ensure consistent checking
-    path = path.absolute()
-
-    # First check the direct path name against patterns
-    for pattern in ignore_patterns:
-        if fnmatch.fnmatch(path.name, pattern):
-            return True
-
-    # Then check each part of the path against patterns
-    for part in path.parts:
-        for pattern in ignore_patterns:
-            if fnmatch.fnmatch(part, pattern):
-                return True
-
-    return False
+    return any(
+        fnmatch.fnmatch(part, pattern)
+        for part in path.absolute().parts
+        for pattern in ignore_patterns
+    )
 
 
 def file_matches_filter(file: Path, filters: List[str]) -> bool:
@@ -224,42 +243,59 @@ def file_matches_filter(file: Path, filters: List[str]) -> bool:
     return any(file.suffix == ext for ext in filters)
 
 
+def walk_valid_paths(
+    directory: Path, recursive: bool, ignore_patterns: List[str], filters: List[str]
+) -> Iterable[Path]:
+    """
+    Yields valid Path objects (dirs and files) that pass ignore checks.
+    This is a common helper used by both get_files() and build_tree().
+    """
+    if recursive:
+        for root, dirs, filenames in os.walk(directory):
+            root_path = Path(root)
+
+            # Skip if the root itself should be ignored
+            if should_ignore(root_path, ignore_patterns):
+                continue
+
+            # Prune ignored dirs to prevent walking into them
+            dirs[:] = [
+                d for d in dirs if not should_ignore(root_path / d, ignore_patterns)
+            ]
+
+            # First yield the root directory itself if it's valid
+            yield root_path
+
+            # Then yield all valid files in this directory
+            for fname in filenames:
+                fpath = root_path / fname
+                if not should_ignore(fpath, ignore_patterns):
+                    yield fpath
+    else:
+        # For non-recursive mode, just yield immediate children
+        try:
+            for item in directory.iterdir():
+                if not should_ignore(item, ignore_patterns):
+                    yield item
+        except PermissionError:
+            pass
+
+
 def get_files(
     directory: Path, recursive: bool, filters: List[str], ignore_patterns: List[str]
 ) -> List[Path]:
     """
     Retrieve a list of files from the directory that match the filters
-    and don't match ignore patterns.
+    and don't match ignore patterns. Uses the common walk_valid_paths helper.
     """
-    files = []
-    if recursive:
-        for root, dirs, filenames in os.walk(directory):
-            root_path = Path(root)
-
-            # Remove ignored directories from dirs list to prevent walking into them
-            dirs[:] = [
-                d for d in dirs if not should_ignore(root_path / d, ignore_patterns)
-            ]
-
-            # Skip if current directory should be ignored
-            if should_ignore(root_path, ignore_patterns):
-                continue
-
-            for filename in filenames:
-                file_path = root_path / filename
-                if not should_ignore(
-                    file_path, ignore_patterns
-                ) and file_matches_filter(file_path, filters):
-                    files.append(file_path)
-    else:
-        for file in directory.iterdir():
-            if (
-                file.is_file()
-                and not should_ignore(file, ignore_patterns)
-                and file_matches_filter(file, filters)
-            ):
-                files.append(file)
-    return sorted(files)
+    return sorted(
+        [
+            p
+            for p in walk_valid_paths(directory, recursive, ignore_patterns, filters)
+            if p.is_file() and file_matches_filter(p, filters)
+        ],
+        key=lambda p: p.name.lower(),
+    )
 
 
 def build_tree(
@@ -268,51 +304,37 @@ def build_tree(
     """Build and return a Rich Tree representing the directory structure."""
     tree = Tree(f"[bold blue]{directory.name or str(directory)}[/bold blue]")
 
-    if recursive:
+    # Get all valid paths and organize them by parent directory
+    paths_by_parent: Dict[Path, List[Path]] = {}
+    for path in walk_valid_paths(directory, recursive, ignore_patterns, filters):
+        if path == directory:
+            continue
+        parent = path.parent
+        if parent not in paths_by_parent:
+            paths_by_parent[parent] = []
+        paths_by_parent[parent].append(path)
 
-        def add_branch(branch: Tree, path: Path):
-            try:
-                # Get all entries and sort them (directories first, then files)
-                entries = sorted(
-                    path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
-                )
-                # Filter out ignored entries
-                entries = [
-                    entry
-                    for entry in entries
-                    if not should_ignore(entry, ignore_patterns)
-                ]
-            except PermissionError:
-                return
+    def add_to_tree(current_dir: Path, current_tree: Tree) -> None:
+        """Recursively add paths to the tree structure."""
+        if current_dir not in paths_by_parent:
+            return
 
-            for entry in entries:
-                if entry.is_dir():
-                    sub_branch = Tree(f"[bold magenta]{entry.name}[/bold magenta]")
-                    add_branch(sub_branch, entry)
-                    if sub_branch.children:
-                        branch.add(sub_branch)
-                elif file_matches_filter(entry, filters):
-                    branch.add(f"[green]{entry.name}[/green]")
+        # Sort paths: directories first, then files
+        paths = sorted(
+            paths_by_parent[current_dir], key=lambda p: (not p.is_dir(), p.name.lower())
+        )
 
-        add_branch(tree, directory)
-    else:
-        try:
-            entries = sorted(
-                directory.iterdir(), key=lambda p: (not p.is_file(), p.name.lower())
-            )
-            # Filter out ignored entries
-            entries = [
-                entry
-                for entry in entries
-                if not should_ignore(entry, ignore_patterns)
-                and (entry.is_dir() or file_matches_filter(entry, filters))
-            ]
-            for entry in entries:
-                if entry.is_file():
-                    tree.add(f"[green]{entry.name}[/green]")
-        except PermissionError:
-            pass
+        for path in paths:
+            if path.is_dir():
+                # Add directory and recursively process its contents
+                sub_tree = current_tree.add(f"[bold magenta]{path.name}[/bold magenta]")
+                add_to_tree(path, sub_tree)
+            elif file_matches_filter(path, filters):
+                # Add file if it matches filters
+                current_tree.add(f"[green]{path.name}[/green]")
 
+    # Start building the tree from the root directory
+    add_to_tree(directory, tree)
     return tree
 
 
@@ -323,6 +345,157 @@ def clear_console():
     else:  # For Unix/Linux/MacOS
         # Using ANSI escape codes for a more elegant clear
         print("\033[H\033[J", end="")
+
+
+def handle_init(force: bool) -> None:
+    """Handle the initialization process."""
+    if DEFAULT_CONFIG_PATH.exists() and not force:
+        overwrite = inquirer.confirm(
+            message="Configuration file already exists. Do you want to overwrite it?",
+            default=False,
+        ).execute()
+        if not overwrite:
+            console.print("[yellow]Configuration unchanged.[/yellow]")
+            raise typer.Exit()
+
+    ensure_config_dir()
+    config_data = interactive_init()
+    try:
+        with open(DEFAULT_CONFIG_PATH, "w") as f:
+            toml.dump({"cmdc": config_data}, f)
+        console.print(
+            Panel(
+                f"[green]Configuration saved successfully to:[/green]\n{DEFAULT_CONFIG_PATH}",
+                title="Success",
+            )
+        )
+    except Exception as e:
+        console.print(
+            Panel(f"[red]Error saving configuration:[/red]\n{str(e)}", title="Error")
+        )
+        raise typer.Exit(1)
+
+
+def scan_and_select_files(
+    directory: Path,
+    recursive: bool,
+    filters: List[str],
+    ignore_patterns: List[str],
+    non_interactive: bool,
+) -> List[str]:
+    """Scan directory and handle file selection."""
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Scanning files...", total=None)
+        files = get_files(directory, recursive, filters, ignore_patterns)
+
+    if not files:
+        console.print(
+            Panel("[red]No files found matching the criteria.[/red]", title="Error")
+        )
+        raise typer.Exit(code=1)
+
+    # Build and display directory tree
+    tree = build_tree(directory, recursive, filters, ignore_patterns)
+    console.print(
+        Panel(
+            tree,
+            title="[bold underline]Directory Structure[/bold underline]",
+            border_style="blue",
+        )
+    )
+
+    # File selection
+    if non_interactive:
+        selected_files = [str(f.relative_to(directory)) for f in files]
+    else:
+        choices = [str(f.relative_to(directory)) for f in files]
+        selected_files = inquirer.checkbox(
+            message="Select files to extract:",
+            choices=choices,
+            cycle=True,
+        ).execute()
+
+    if not selected_files:
+        console.print(
+            Panel("[yellow]No files selected. Exiting.[/yellow]", title="Info")
+        )
+        raise typer.Exit(code=0)
+
+    return selected_files
+
+
+def process_output(
+    selected_files: List[str],
+    directory: Path,
+    output_mode: str,
+    copy_to_clipboard: bool,
+) -> None:
+    """Process and output the selected files' contents."""
+    output_text = ""
+    if output_mode.lower() == "console":
+        console.print(
+            Panel("[bold green]Extracted File Contents[/bold green]", expand=False)
+        )
+
+    for file_path_str in selected_files:
+        file_path = directory / file_path_str
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            syntax = Syntax(
+                content,
+                file_path.suffix.lstrip("."),
+                theme="monokai",
+                line_numbers=False,
+                word_wrap=True,
+            )
+
+            # Append file content to output_text in a marked-up format
+            output_text += f"\n<open_file>\n{file_path_str}\n"
+            output_text += f"<contents>\n{content}\n</contents>\n"
+            output_text += "</open_file>\n"
+
+            if output_mode.lower() == "console":
+                console.print("\n<open_file>")
+                console.print(file_path_str)
+                console.print("<contents>")
+                console.print(syntax)
+                console.print("</contents>")
+                console.print("</open_file>\n")
+        except Exception as e:
+            error_msg = f"\nError reading {file_path_str}: {e}\n"
+            if output_mode.lower() == "console":
+                console.print(f"[red]{error_msg}[/red]")
+            else:
+                output_text += error_msg
+
+    # Handle clipboard copy if needed
+    if output_mode.lower() == "console" and copy_to_clipboard:
+        try:
+            pyperclip.copy(output_text)
+            console.print(
+                Panel("Content copied to clipboard successfully", style="bold green")
+            )
+        except Exception as e:
+            console.print(Panel(f"Failed to copy to clipboard: {e}", style="red"))
+
+    # Save to file if output is not console
+    if output_mode.lower() != "console":
+        try:
+            output_file = Path(output_mode)
+            output_file.write_text(output_text, encoding="utf-8")
+            console.print(
+                Panel(
+                    f"File contents saved to [bold]{output_file.resolve()}[/bold]",
+                    style="green",
+                )
+            )
+        except Exception as e:
+            console.print(Panel(f"Error writing to output file: {e}", style="red"))
+            raise typer.Exit(code=1)
 
 
 @app.command()
@@ -383,37 +556,12 @@ def main(
     to modify the behavior. To run the configuration initialization, use the `--init`
     flag (with `--force` to override an existing configuration).
     """
-    # If the init flag is set, perform the interactive configuration process
+    # Handle initialization if requested
     if init:
-        if DEFAULT_CONFIG_PATH.exists() and not force:
-            overwrite = inquirer.confirm(
-                message="Configuration file already exists. Do you want to overwrite it?",
-                default=False,
-            ).execute()
-            if not overwrite:
-                console.print("[yellow]Configuration unchanged.[/yellow]")
-                raise typer.Exit()
-        ensure_config_dir()
-        config_data = interactive_init()
-        try:
-            with open(DEFAULT_CONFIG_PATH, "w") as f:
-                toml.dump({"cmdc": config_data}, f)
-            console.print(
-                Panel(
-                    f"[green]Configuration saved successfully to:[/green]\n{DEFAULT_CONFIG_PATH}",
-                    title="Success",
-                )
-            )
-        except Exception as e:
-            console.print(
-                Panel(
-                    f"[red]Error saving configuration:[/red]\n{str(e)}", title="Error"
-                )
-            )
-            raise typer.Exit(1)
+        handle_init(force)
         raise typer.Exit()
 
-    # --- Browse / Extract Files Process ---
+    # Clear console and show banner
     clear_console()
     banner_text = (
         "[bold cyan]Interactive File Browser & Extractor[/bold cyan]\n"
@@ -421,7 +569,7 @@ def main(
     )
     console.print(Panel(banner_text, style="bold green", expand=False))
 
-    # Load configuration (and merge with environment variables)
+    # Load and merge configuration
     config = load_config()
 
     # Set defaults from config if not provided as command-line arguments
@@ -436,114 +584,13 @@ def main(
     if recursive is None:
         recursive = config["recursive"]
 
-    # Scan for files with a spinner
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        progress.add_task(description="Scanning files...", total=None)
-        files = get_files(directory, recursive, filter, ignore)
-
-    if not files:
-        console.print(
-            Panel("[red]No files found matching the criteria.[/red]", title="Error")
-        )
-        raise typer.Exit(code=1)
-
-    # Build and display directory tree in a panel
-    tree = build_tree(directory, recursive, filter, ignore)
-    console.print(
-        Panel(
-            tree,
-            title="[bold underline]Directory Structure[/bold underline]",
-            border_style="blue",
-        )
+    # Scan directory and get selected files
+    selected_files = scan_and_select_files(
+        directory, recursive, filter, ignore, non_interactive
     )
 
-    # File selection
-    if non_interactive:
-        selected_files = [str(f.relative_to(directory)) for f in files]
-    else:
-        choices = [str(f.relative_to(directory)) for f in files]
-        selected_files = inquirer.checkbox(
-            message="Select files to extract:",
-            choices=choices,
-            cycle=True,
-        ).execute()
-
-    if not selected_files:
-        console.print(
-            Panel("[yellow]No files selected. Exiting.[/yellow]", title="Info")
-        )
-        raise typer.Exit(code=0)
-
-    # Clear the console before showing file contents
-    clear_console()
-    console.print("\n")  # Blank line for spacing
-
-    # Prepare output text
-    output_text = ""
-    if output.lower() == "console":
-        console.print(
-            Panel("[bold green]Extracted File Contents[/bold green]", expand=False)
-        )
-
-    # Process each selected file
-    for file_path_str in selected_files:
-        file_path = directory / file_path_str
-        try:
-            content = file_path.read_text(encoding="utf-8")
-            syntax = Syntax(
-                content,
-                file_path.suffix.lstrip("."),
-                theme="monokai",
-                line_numbers=False,
-                word_wrap=True,
-            )
-            # Append file content to output_text in a marked-up format
-            output_text += f"\n<open_file>\n{file_path_str}\n"
-            output_text += f"<contents>\n{content}\n</contents>\n"
-            output_text += "</open_file>\n"
-
-            if output.lower() == "console":
-                console.print("\n<open_file>")
-                console.print(file_path_str)
-                console.print("<contents>")
-                console.print(syntax)
-                console.print("</contents>")
-                console.print("</open_file>\n")
-        except Exception as e:
-            error_msg = f"\nError reading {file_path_str}: {e}\n"
-            if output.lower() == "console":
-                console.print(f"[red]{error_msg}[/red]")
-            else:
-                output_text += error_msg
-
-    # If output is to the console and clipboard copying is enabled, copy the content
-    if output.lower() == "console" and config.get("copy_to_clipboard", True):
-        try:
-            pyperclip.copy(output_text)
-            console.print(
-                Panel("Content copied to clipboard successfully", style="bold green")
-            )
-        except Exception as e:
-            console.print(Panel(f"Failed to copy to clipboard: {e}", style="red"))
-
-    # If output is a filename, save the extracted text to the file
-    if output.lower() != "console":
-        try:
-            output_file = Path(output)
-            output_file.write_text(output_text, encoding="utf-8")
-            console.print(
-                Panel(
-                    f"File contents saved to [bold]{output_file.resolve()}[/bold]",
-                    style="green",
-                )
-            )
-        except Exception as e:
-            console.print(Panel(f"Error writing to output file: {e}", style="red"))
-            raise typer.Exit(code=1)
+    # Process and output the selected files
+    process_output(selected_files, directory, output, config["copy_to_clipboard"])
 
 
 if __name__ == "__main__":
