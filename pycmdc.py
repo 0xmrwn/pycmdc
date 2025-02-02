@@ -13,45 +13,162 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.tree import Tree
 
-# Create a Typer app instance with subcommands
 app = typer.Typer(
     help="Interactive CLI tool for browsing and selecting files for LLM contexts."
 )
 
-DEFAULT_CONFIG_PATH = Path.home() / ".cmdc" / "config.toml"
+
+def get_config_dir() -> Path:
+    """Get the appropriate config directory following platform conventions."""
+    if os.name == "nt":  # Windows
+        app_data = os.getenv("APPDATA")
+        if app_data:
+            return Path(app_data) / "cmdc"
+        return Path.home() / "AppData" / "Roaming" / "cmdc"
+    else:  # Unix-like systems
+        # Follow XDG Base Directory Specification
+        xdg_config = os.getenv("XDG_CONFIG_HOME")
+        if xdg_config:
+            return Path(xdg_config) / "cmdc"
+        return Path.home() / ".config" / "cmdc"
+
+
+# Update the default config path
+DEFAULT_CONFIG_PATH = get_config_dir() / "config.toml"
 console = Console()
+
+
+def ensure_config_dir() -> None:
+    """Create the config directory if it doesn't exist."""
+    config_dir = get_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+
+def get_default_ignore_patterns() -> List[str]:
+    """Get the default list of ignore patterns."""
+    return [
+        ".git",
+        "node_modules",
+        "__pycache__",
+        "*.pyc",
+        "venv",
+        ".venv",
+        "env",
+        ".env",
+        ".idea",
+        ".vscode",
+        ".pytest_cache",
+        "__pycache__",
+        ".coverage",
+        "htmlcov",
+        "build",
+        "dist",
+        "*.egg-info",
+        ".tox",
+        ".mypy_cache",
+    ]
+
+
+def interactive_init() -> dict:
+    """Run the interactive initialization process."""
+    console.print(
+        Panel(
+            "[bold cyan]Welcome to CMDC Configuration![/bold cyan]\n"
+            "Let's set up your preferences for the file browser.",
+            style="bold green",
+        )
+    )
+
+    # Get clipboard preference
+    copy_to_clipboard = inquirer.confirm(
+        message="Do you want to automatically copy selected content to clipboard?",
+        default=True,
+    ).execute()
+
+    # Get recursive preference
+    recursive = inquirer.confirm(
+        message="Do you want to browse directories recursively by default?",
+        default=False,
+    ).execute()
+
+    # Get ignore patterns
+    default_patterns = get_default_ignore_patterns()
+    use_default_ignores = inquirer.confirm(
+        message="Would you like to use the recommended ignore patterns?",
+        default=True,
+    ).execute()
+
+    if use_default_ignores:
+        # Let user modify default patterns
+        ignore_patterns = inquirer.checkbox(
+            message="Select patterns to ignore (space to toggle, enter to confirm):",
+            choices=default_patterns,
+            default=default_patterns,
+        ).execute()
+    else:
+        # Start fresh
+        ignore_patterns = []
+
+    # Allow adding custom patterns
+    while inquirer.confirm(
+        message="Would you like to add custom ignore patterns?",
+        default=False,
+    ).execute():
+        pattern = inquirer.text(
+            message="Enter pattern (e.g., *.log, temp/*, etc.):",
+        ).execute()
+        if pattern:
+            ignore_patterns.append(pattern)
+
+    # Get file filters
+    use_filters = inquirer.confirm(
+        message="Would you like to set default file extension filters?",
+        default=False,
+    ).execute()
+
+    filters = []
+    if use_filters:
+        while True:
+            ext = inquirer.text(
+                message="Enter file extension (e.g., .py) or press enter to finish:",
+            ).execute()
+            if not ext:
+                break
+            if not ext.startswith("."):
+                ext = f".{ext}"
+            filters.append(ext)
+
+    return {
+        "copy_to_clipboard": copy_to_clipboard,
+        "recursive": recursive,
+        "ignore_patterns": ignore_patterns,
+        "filters": filters,
+    }
 
 
 def load_config() -> dict:
     """Load configuration from file or environment variables."""
     config = {
         "filters": [],
-        "ignore_patterns": [
-            ".git",
-            "node_modules",
-            "__pycache__",
-            "*.pyc",
-            "venv",
-            ".venv",
-            "env",
-            ".env",
-            ".idea",
-            ".vscode",
-            ".pytest_cache",
-            "__pycache__",
-            ".coverage",
-            "htmlcov",
-            "build",
-            "dist",
-            "*.egg-info",
-            ".tox",
-            ".mypy_cache",
-        ],
+        "ignore_patterns": get_default_ignore_patterns(),
         "recursive": False,
+        "copy_to_clipboard": True,
     }
 
+    # Check if this is first run (no config file exists)
+    if not DEFAULT_CONFIG_PATH.exists():
+        console.print(
+            Panel(
+                "[yellow]Welcome to CMDC![/yellow]\n"
+                "You're running with default settings. To customize the behavior, run:\n"
+                "[bold cyan]cmdc --init[/bold cyan]",
+                title="Notice",
+                border_style="yellow",
+            )
+        )
+
     # Load from config file if it exists
-    if DEFAULT_CONFIG_PATH.exists():
+    else:
         try:
             file_config = toml.load(DEFAULT_CONFIG_PATH)
             config.update(file_config.get("cmdc", {}))
@@ -96,7 +213,7 @@ def should_ignore(path: Path, ignore_patterns: List[str]) -> bool:
     return False
 
 
-def file_matches_filter(file: Path, filters: list[str]) -> bool:
+def file_matches_filter(file: Path, filters: List[str]) -> bool:
     """
     Check if a file matches the provided filter extensions.
     If no filters are provided, all files are accepted.
@@ -159,20 +276,17 @@ def build_tree(
                 entries = sorted(
                     path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
                 )
-
                 # Filter out ignored entries
                 entries = [
                     entry
                     for entry in entries
                     if not should_ignore(entry, ignore_patterns)
                 ]
-
             except PermissionError:
                 return
 
             for entry in entries:
                 if entry.is_dir():
-                    # Only add directory if it contains visible files
                     sub_branch = Tree(f"[bold magenta]{entry.name}[/bold magenta]")
                     add_branch(sub_branch, entry)
                     if sub_branch.children:
@@ -193,7 +307,6 @@ def build_tree(
                 if not should_ignore(entry, ignore_patterns)
                 and (entry.is_dir() or file_matches_filter(entry, filters))
             ]
-
             for entry in entries:
                 if entry.is_file():
                     tree.add(f"[green]{entry.name}[/green]")
@@ -213,7 +326,17 @@ def clear_console():
 
 
 @app.command()
-def browse(
+def main(
+    init: bool = typer.Option(
+        False,
+        "--init",
+        help="Run interactive configuration initialization.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Force reinitialization even if a configuration exists.",
+    ),
     directory: Optional[Path] = typer.Argument(
         None,
         exists=True,
@@ -227,55 +350,89 @@ def browse(
         "console",
         "--output",
         "-o",
-        help="Output mode: 'console' or filename",
+        help="Output mode: 'console' or a filename to save the extracted content.",
     ),
-    filter: List[str] = typer.Option(
+    filter: Optional[List[str]] = typer.Option(
         None,
         "--filter",
         "-f",
-        help="Filter files by extension (e.g., .py .js)",
+        help="Filter files by extension (e.g., .py .js).",
     ),
-    recursive: bool = typer.Option(
+    recursive: Optional[bool] = typer.Option(
         None,
         "--recursive",
         "-r",
-        help="Recursively traverse subdirectories",
+        help="Recursively traverse subdirectories.",
     ),
-    ignore: List[str] = typer.Option(
+    ignore: Optional[List[str]] = typer.Option(
         None,
         "--ignore",
         "-i",
-        help="Additional patterns to ignore (e.g., .git node_modules)",
+        help="Additional patterns to ignore (e.g., .git node_modules).",
     ),
     non_interactive: bool = typer.Option(
         False,
         "--non-interactive",
-        help="Select all matching files without prompting",
+        help="Select all matching files without prompting.",
     ),
 ):
-    """Browse and select files interactively."""
-    # Display a welcome banner
-    clear_console()  # Clear console before showing the initial banner
+    """
+    Interactive CLI tool for browsing and selecting files for LLM contexts.
+
+    By default, running `cmdc` will browse the current directory. Use the options
+    to modify the behavior. To run the configuration initialization, use the `--init`
+    flag (with `--force` to override an existing configuration).
+    """
+    # If the init flag is set, perform the interactive configuration process
+    if init:
+        if DEFAULT_CONFIG_PATH.exists() and not force:
+            overwrite = inquirer.confirm(
+                message="Configuration file already exists. Do you want to overwrite it?",
+                default=False,
+            ).execute()
+            if not overwrite:
+                console.print("[yellow]Configuration unchanged.[/yellow]")
+                raise typer.Exit()
+        ensure_config_dir()
+        config_data = interactive_init()
+        try:
+            with open(DEFAULT_CONFIG_PATH, "w") as f:
+                toml.dump({"cmdc": config_data}, f)
+            console.print(
+                Panel(
+                    f"[green]Configuration saved successfully to:[/green]\n{DEFAULT_CONFIG_PATH}",
+                    title="Success",
+                )
+            )
+        except Exception as e:
+            console.print(
+                Panel(
+                    f"[red]Error saving configuration:[/red]\n{str(e)}", title="Error"
+                )
+            )
+            raise typer.Exit(1)
+        raise typer.Exit()
+
+    # --- Browse / Extract Files Process ---
+    clear_console()
     banner_text = (
         "[bold cyan]Interactive File Browser & Extractor[/bold cyan]\n"
         "Browse directories, preview content, and extract files for LLM contexts."
     )
     console.print(Panel(banner_text, style="bold green", expand=False))
 
-    # Load config and merge with command line arguments
+    # Load configuration (and merge with environment variables)
     config = load_config()
 
+    # Set defaults from config if not provided as command-line arguments
     if directory is None:
         directory = Path.cwd()
     if filter is None:
         filter = config["filters"]
-
-    # Merge the default ignore patterns with any additional ones.
     if ignore is None:
         ignore = config["ignore_patterns"]
     else:
-        ignore = config["ignore_patterns"] + ignore
-
+        ignore = config["ignore_patterns"] + list(ignore)
     if recursive is None:
         recursive = config["recursive"]
 
@@ -323,7 +480,7 @@ def browse(
 
     # Clear the console before showing file contents
     clear_console()
-    console.print("\n")  # Add a blank line for better spacing
+    console.print("\n")  # Blank line for spacing
 
     # Prepare output text
     output_text = ""
@@ -344,7 +501,7 @@ def browse(
                 line_numbers=False,
                 word_wrap=True,
             )
-            # Build output_text regardless of output mode
+            # Append file content to output_text in a marked-up format
             output_text += f"\n<open_file>\n{file_path_str}\n"
             output_text += f"<contents>\n{content}\n</contents>\n"
             output_text += "</open_file>\n"
@@ -363,14 +520,17 @@ def browse(
             else:
                 output_text += error_msg
 
-    # Always copy to clipboard when in console mode
-    if output.lower() == "console":
+    # If output is to the console and clipboard copying is enabled, copy the content
+    if output.lower() == "console" and config.get("copy_to_clipboard", True):
         try:
             pyperclip.copy(output_text)
-            console.print(Panel("Content copied to clipboard!", style="bold green"))
+            console.print(
+                Panel("Content copied to clipboard successfully", style="bold green")
+            )
         except Exception as e:
             console.print(Panel(f"Failed to copy to clipboard: {e}", style="red"))
 
+    # If output is a filename, save the extracted text to the file
     if output.lower() != "console":
         try:
             output_file = Path(output)
