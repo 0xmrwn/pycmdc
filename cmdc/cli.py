@@ -8,7 +8,6 @@ from cmdc import __version__
 from cmdc.config_manager import ConfigManager
 from cmdc.file_browser import FileBrowser
 from cmdc.output_handler import OutputHandler
-from cmdc.utils import clear_console
 
 from rich.console import Console
 from rich.panel import Panel
@@ -20,8 +19,18 @@ app = typer.Typer(
 console = Console()
 
 
+def display_banner():
+    """Display the cmdc banner."""
+    banner_text = (
+        "[bold cyan]cmdc[/bold cyan]\n"
+        "Browse directories, preview content, and extract files for LLM context dumps."
+    )
+    console.print(Panel(banner_text, style="bold green", expand=True))
+
+
 def version_callback(value: bool):
     if value:
+        display_banner()
         console.print(f"[bold]cmdc[/bold] (version {__version__})")
         raise typer.Exit()
 
@@ -122,6 +131,8 @@ def main(
     # Create a ConfigManager instance to load and (if needed) initialize configuration.
     config_manager = ConfigManager()
 
+    display_banner()
+
     if config:
         config_manager.handle_config(force)
         raise typer.Exit()
@@ -137,13 +148,6 @@ def main(
     if add_ignore:
         config_manager.add_ignore_patterns(add_ignore)
         raise typer.Exit()
-
-    clear_console()
-    banner_text = (
-        "[bold cyan]Interactive File Browser & Extractor[/bold cyan]\n"
-        "Browse directories, preview content, and extract files for LLM contexts."
-    )
-    console.print(Panel(banner_text, style="bold green", expand=False))
 
     # Load the layered configuration.
     config = config_manager.load_config()
