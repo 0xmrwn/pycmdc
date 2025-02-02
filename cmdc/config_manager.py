@@ -63,6 +63,7 @@ class ConfigManager:
             "*.egg-info",
             ".tox",
             ".mypy_cache",
+            ".ruff_cache",
         ]
 
     @staticmethod
