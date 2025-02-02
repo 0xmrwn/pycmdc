@@ -22,7 +22,9 @@ class ConfigManager:
 
     @staticmethod
     def get_config_dir() -> Path:
-        """Get the appropriate configuration directory following platform conventions."""
+        """
+        Get the appropriate configuration directory following platform conventions.
+        """
         if os.name == "nt":  # Windows
             app_data = os.getenv("APPDATA")
             if app_data:
@@ -114,7 +116,8 @@ class ConfigManager:
 
         if use_default_ignores:
             ignore_patterns = inquirer.checkbox(
-                message="Select patterns to ignore (space to toggle, enter to confirm):",
+                message="Select patterns to ignore:",
+                instruction="Space to toggle, Enter to confirm",
                 choices=default_patterns,
                 default=default_patterns,
             ).execute()
@@ -142,7 +145,9 @@ class ConfigManager:
         if use_filters:
             while True:
                 ext = inquirer.text(
-                    message="Enter file extension (e.g., .py) or press enter to finish:",
+                    message=(
+                        "Enter file extension (e.g., .py) or press enter to finish:"
+                    ),
                 ).execute()
                 if not ext:
                     break
@@ -164,7 +169,8 @@ class ConfigManager:
             console.print(
                 Panel(
                     "[yellow]Welcome to CMDC![/yellow]\n"
-                    "You're running with default settings. To customize the behavior, run:\n"
+                    "You're running with default settings. "
+                    "To customize the behavior, run:\n"
                     "[bold cyan]cmdc --init[/bold cyan]",
                     title="Notice",
                     border_style="yellow",
@@ -215,7 +221,9 @@ class ConfigManager:
         """Handle the interactive initialization process."""
         if self.config_path.exists() and not force:
             overwrite = inquirer.confirm(
-                message="Configuration file already exists. Do you want to overwrite it?",
+                message=(
+                    "Configuration file already exists. Do you want to overwrite it?"
+                ),
                 default=False,
             ).execute()
             if not overwrite:
@@ -228,7 +236,8 @@ class ConfigManager:
                 toml.dump({"cmdc": config_data}, f)
             console.print(
                 Panel(
-                    f"[green]Configuration saved successfully to:[/green]\n{self.config_path}",
+                    "[green]Configuration saved successfully to:[/green]\n"
+                    f"{self.config_path}",
                     title="Success",
                 )
             )
