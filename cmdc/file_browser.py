@@ -23,6 +23,15 @@ from cmdc.utils import build_directory_tree, count_tokens
 console = Console()
 
 
+class PanelProgress(Progress):
+    def get_renderables(self):
+        yield Panel(
+            self.make_tasks_table(self.tasks),
+            title="[bold]Tokenization[/bold]",
+            border_style="blue",
+        )
+
+
 class FileBrowser:
     """
     Handles directory scanning, file filtering, and building a visual tree
@@ -157,7 +166,7 @@ class FileBrowser:
 
         # Build a mapping: relative file path -> token count BEFORE showing the tree
         token_counts = {}
-        with Progress(
+        with PanelProgress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
