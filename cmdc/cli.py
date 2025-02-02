@@ -71,7 +71,8 @@ def main(
         None,
         "--depth",
         "-d",
-        help="Maximum depth for subdirectory exploration. Overrides config setting if provided and recursive mode is not used.",
+        help="Maximum depth for subdirectory exploration. "
+        "Overrides config setting if provided and recursive mode is not used.",
     ),
 ):
     """

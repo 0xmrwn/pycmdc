@@ -76,7 +76,7 @@ class FileBrowser:
         elif self.depth is not None:
             # Use a limited depth traversal.
             def limited_walk(current: Path, current_level: int):
-                # Do not yield the root directory itself; yield only when current_level > 0.
+                # yield only when current_level > 0.
                 # When depth==1, only immediate children will be yielded.
                 try:
                     # Recurse only if the current level is less than allowed depth.
@@ -126,7 +126,8 @@ class FileBrowser:
 
     def scan_and_select_files(self, non_interactive: bool) -> List[str]:
         """
-        Scan the directory and prompt the user to select files (unless in non-interactive mode).
+        Scan the directory and prompt the user to select files
+        (unless in non-interactive mode).
         """
         with Progress(
             SpinnerColumn(),
@@ -146,7 +147,16 @@ class FileBrowser:
         console.print(
             Panel(
                 tree,
-                title=f"[bold underline]Directory Structure[/bold underline] {'(Recursive)' if self.recursive else f'(Depth: {self.depth})' if self.depth else '(Non-recursive)'}",
+                title=(
+                    "[bold underline]Directory Structure[/bold underline] "
+                    + (
+                        "(Recursive)"
+                        if self.recursive
+                        else f"(Depth: {self.depth})"
+                        if self.depth
+                        else "(Non-recursive)"
+                    )
+                ),
                 border_style="blue",
             )
         )
@@ -185,7 +195,9 @@ class FileBrowser:
                 instruction="Use Tab to select/unselect, type to search",
                 border=True,
                 max_height=8,
-                transformer=lambda result: f"{len(result)} file{'s' if len(result) != 1 else ''} selected",
+                transformer=lambda result: (
+                    f"{len(result)} file{'s' if len(result) != 1 else ''} selected"
+                ),
                 multiselect=True,
                 info=True,
                 marker="◉ ",
