@@ -165,7 +165,7 @@ class FileBrowser:
         console.print(
             Panel(
                 "[bold]Keyboard Shortcuts:[/bold]\n"
-                "↑/↓: Navigate • Space: Select • Enter: Confirm\n"
+                "↑/↓: Navigate • ←/→: Toggle • Enter: Confirm\n"
                 "Type to Search • Ctrl+A: Select All • Ctrl+D: Toggle All",
                 title="[bold]Instructions[/bold]",
                 border_style="green",
@@ -200,11 +200,11 @@ class FileBrowser:
                 ),
                 multiselect=True,
                 info=True,
-                marker="◉ ",
-                marker_pl="○ ",
+                marker=" ◉ ",
+                marker_pl=" ○ ",
                 keybindings={
                     "answer": [{"key": "enter"}],
-                    "toggle": [{"key": "tab"}],
+                    "toggle": [{"key": "left"}, {"key": "right"}],
                     "toggle-all": [{"key": "c-a"}, {"key": "c-d"}],
                     "interrupt": [{"key": "c-c"}],
                 },
