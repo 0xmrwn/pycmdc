@@ -84,7 +84,7 @@ class ConfigManager:
         """Run the interactive configuration setup process."""
         console.print(
             Panel(
-                "[bold cyan]Welcome to CMDC Configuration![/bold cyan]\n"
+                "[bold cyan]Welcome to cmdc Configuration![/bold cyan]\n"
                 "Let's set up your preferences for the file browser.",
                 style="bold green",
             )
@@ -187,7 +187,7 @@ class ConfigManager:
         if not self.config_path.exists():
             console.print(
                 Panel(
-                    "[yellow]Welcome to CMDC![/yellow]\n"
+                    "[yellow]Welcome to cmdc![/yellow]\n"
                     "You're running with default settings. "
                     "To customize the behavior, run:\n"
                     "[bold cyan]cmdc --config[/bold cyan]",
