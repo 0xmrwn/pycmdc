@@ -128,7 +128,7 @@ class ConfigManager:
         if use_default_ignores:
             ignore_patterns = inquirer.checkbox(
                 message="Select patterns to ignore:",
-                instruction="Space to toggle, Enter to confirm",
+                instruction="Space to toggle, Enter to confirm, ctrl+a to select all",
                 choices=default_patterns,
                 default=default_patterns,
             ).execute()
@@ -288,16 +288,21 @@ class ConfigManager:
         # Create and configure the table
         table = Table(title=title, show_header=True, header_style="bold cyan")
         table.add_column("Setting", style="cyan")
-        table.add_column("Value", style="green")
+        table.add_column("Value", style="green", no_wrap=False)
 
         # Add rows for each configuration item
         for key, value in current_config.items():
             if isinstance(value, list):
-                # Format lists nicely
+                # Format lists in a compact way
                 if not value:
                     formatted_value = "[italic]empty[/italic]"
                 else:
-                    formatted_value = "\n".join(f"• {item}" for item in value)
+                    # For ignore patterns and filters, show as comma-separated list
+                    formatted_value = ", ".join(str(item) for item in value)
+                    # If the list is too long, truncate it
+                    if len(formatted_value) > 60:
+                        items_shown = value[:3]
+                        formatted_value = f"{', '.join(str(item) for item in items_shown)} [dim](+{len(value) - 3} more)[/dim]"
             elif isinstance(value, bool):
                 # Format booleans with color
                 formatted_value = (
@@ -314,3 +319,97 @@ class ConfigManager:
         console.print("\n" + description + "\n")
         console.print(table)
         console.print()  # Add a newline for better spacing
+
+    def display_ignore_patterns(self) -> None:
+        """Display the current ignore patterns from config or defaults."""
+        config = self.load_config()
+        ignore_patterns = config.get("ignore_patterns", [])
+
+        table = Table(
+            title="[bold cyan]Current Ignore Patterns[/bold cyan]",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        table.add_column("Pattern", style="green")
+        table.add_column("Source", style="cyan")
+
+        # Display patterns from config first, then defaults if not in config
+        default_patterns = set(self.get_default_ignore_patterns())
+        config_patterns = set(ignore_patterns)
+
+        for pattern in sorted(config_patterns):
+            source = "Custom" if pattern not in default_patterns else "Default"
+            table.add_row(pattern, source)
+
+        # Show remaining default patterns that aren't in config
+        for pattern in sorted(default_patterns - config_patterns):
+            table.add_row(pattern, "Default (inactive)")
+
+        console.print("\n")
+        console.print(table)
+        console.print(
+            "\nTo add new patterns, use: [bold cyan]cmdc --add-ignore pattern1 pattern2[/bold cyan]"
+        )
+        console.print()
+
+    def add_ignore_patterns(self, new_patterns: List[str]) -> None:
+        """Add new patterns to the ignore list in the configuration."""
+        self.ensure_config_dir()
+
+        # Load existing config or create new one
+        if self.config_path.exists():
+            try:
+                with open(self.config_path, "r") as f:
+                    config = toml.load(f)
+            except Exception as e:
+                console.print(f"[red]Error reading config file: {e}[/red]")
+                raise typer.Exit(1)
+        else:
+            config = {"cmdc": self.get_default_config()}
+
+        # Get current patterns from config or defaults
+        current_patterns = set(
+            config.get("cmdc", {}).get(
+                "ignore_patterns", self.get_default_ignore_patterns()
+            )
+        )
+
+        # Add new patterns
+        added_patterns = []
+        already_exists = []
+        for pattern in new_patterns:
+            if pattern in current_patterns:
+                already_exists.append(pattern)
+            else:
+                current_patterns.add(pattern)
+                added_patterns.append(pattern)
+
+        # Update config
+        if "cmdc" not in config:
+            config["cmdc"] = {}
+        config["cmdc"]["ignore_patterns"] = sorted(list(current_patterns))
+
+        # Save updated config
+        try:
+            with open(self.config_path, "w") as f:
+                toml.dump(config, f)
+
+            if added_patterns:
+                console.print(
+                    Panel(
+                        f"[green]Added {len(added_patterns)} new pattern(s):[/green]\n"
+                        + "\n".join(f"• {pattern}" for pattern in added_patterns),
+                        title="Success",
+                    )
+                )
+            if already_exists:
+                console.print(
+                    Panel(
+                        "[yellow]Already in ignore list:[/yellow]\n"
+                        + "\n".join(f"• {pattern}" for pattern in already_exists),
+                        title="Note",
+                    )
+                )
+        except Exception as e:
+            console.print(f"[red]Error saving config file: {e}[/red]")
+            raise typer.Exit(1)
