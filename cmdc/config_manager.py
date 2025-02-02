@@ -74,6 +74,7 @@ class ConfigManager:
             "ignore_patterns": ConfigManager.get_default_ignore_patterns(),
             "recursive": False,
             "copy_to_clipboard": True,
+            "print_to_console": False,
             "depth": 1,  # Default depth: only immediate subdirectories
             "tiktoken_model": "o200k_base",
         }
@@ -163,6 +164,11 @@ class ConfigManager:
             default="o200k_base",
         ).execute()
 
+        print_to_console = inquirer.confirm(
+            message="Do you want to print the context dump to console by default?",
+            default=False,
+        ).execute()
+
         return {
             "copy_to_clipboard": copy_to_clipboard,
             "recursive": recursive,
@@ -170,6 +176,7 @@ class ConfigManager:
             "filters": filters,
             "depth": default_depth,
             "tiktoken_model": encoding_model,
+            "print_to_console": print_to_console,
         }
 
     def get_file_config(self) -> dict:
