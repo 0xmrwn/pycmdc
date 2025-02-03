@@ -175,7 +175,7 @@ class FileBrowser:
             expand=True,
         ) as progress:
             task = progress.add_task(
-                description="[bold green]Counting tokens...",
+                description="Computing token counts...",
                 total=len(files),
             )
             for f in files:
@@ -206,12 +206,13 @@ class FileBrowser:
             )
         )
 
+        console.rule("[bold blue]Context Selection", style="blue", align="center")
         # Print instructions in a separate panel
         console.print(
             Panel(
+                "[bold]Keyboard Shortcuts[/bold]\n"
                 "↑/↓: Navigate • ←/→: Toggle • ↵: Confirm • "
                 "^A: Select All • ^D: Toggle All",
-                title="[bold]Keyboard Shortcuts[/bold]",
                 border_style="blue",
             )
         )
@@ -253,7 +254,7 @@ class FileBrowser:
                 )
 
             selected_files = inquirer.fuzzy(
-                message="Select files to extract:",
+                message="Select files to include in the context dump:",
                 choices=choices,
                 style=style,
                 border=True,
@@ -281,6 +282,5 @@ class FileBrowser:
                     Panel("[yellow]No files selected. Exiting.[/yellow]", title="Info")
                 )
                 raise typer.Exit(code=0)
-
             total_tokens = sum(token_counts.get(item, 0) for item in selected_files)
             return selected_files, total_tokens

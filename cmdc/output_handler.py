@@ -80,7 +80,7 @@ class OutputHandler:
         summary += "</summary>\n"
         return summary
 
-    def process_output(self, selected_files: List[str], output_mode: str) -> None:
+    def process_output(self, selected_files: List[str], output_mode: str) -> tuple:
         """
         Process and output the selected files' contents.
         """
@@ -126,24 +126,18 @@ class OutputHandler:
         if output_mode.lower() == "console" and self.copy_to_clipboard:
             try:
                 pyperclip.copy(output_text)
-                console.print(
-                    Panel(
-                        "Content copied to clipboard successfully", style="bold green"
-                    )
-                )
+                return True, None  # Success with no file path
             except Exception as e:
                 console.print(Panel(f"Failed to copy to clipboard: {e}", style="red"))
+                return False, None
 
         if output_mode.lower() != "console":
             try:
                 output_file = Path(output_mode)
                 output_file.write_text(output_text, encoding="utf-8")
-                console.print(
-                    Panel(
-                        f"File contents saved to [bold]{output_file.resolve()}[/bold]",
-                        style="green",
-                    )
-                )
+                return True, str(output_file.resolve())  # Success with file path
             except Exception as e:
                 console.print(Panel(f"Error writing to output file: {e}", style="red"))
                 raise typer.Exit(code=1)
+
+        return True, None  # Default success case

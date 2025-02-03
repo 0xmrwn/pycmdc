@@ -205,16 +205,27 @@ def main(
         copy_to_clipboard=config.get("copy_to_clipboard", True),
         print_to_console=should_print_to_console,
     )
-    output_handler.process_output(selected_files, output)
+    success, output_path = output_handler.process_output(selected_files, output)
 
-    # If content was copied to clipboard (and we're in console mode),
-    # display the total tokens (this information is not part of the copied content).
-    if output.lower() == "console" and config.get("copy_to_clipboard", True):
-        console.print(
-            Panel(
-                f"Total tokens copied to clipboard: {total_tokens}", style="bold green"
+    # Display unified success message
+    if success:
+        if output.lower() == "console":
+            if config.get("copy_to_clipboard", True):
+                console.print(
+                    Panel(
+                        f"[bold green]Structured content copied to clipboard[/bold green]\n"
+                        f"Total tokens: {total_tokens}",
+                        style="bold green",
+                    )
+                )
+        else:
+            console.print(
+                Panel(
+                    f"[bold green]Structured content saved to file:[/bold green] {output_path}\n"
+                    f"Total tokens: {total_tokens}",
+                    style="bold green",
+                )
             )
-        )
 
 
 if __name__ == "__main__":
