@@ -21,6 +21,9 @@ tiktoken = "^0.8.0"
 [tool.poetry.scripts]
 cmdc = "cmdc.__main__:app"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
