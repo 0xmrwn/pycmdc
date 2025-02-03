@@ -31,7 +31,12 @@ def display_banner():
 def version_callback(value: bool):
     if value:
         display_banner()
-        console.print(f"[bold]cmdc[/bold] (version {__version__})")
+        console.print(
+            Panel(
+                f"[bold]cmdc[/bold] (version [bold green]{__version__}[/bold green])",
+                border_style="green",
+            )
+        )
         raise typer.Exit()
 
 
