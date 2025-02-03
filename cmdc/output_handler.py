@@ -35,9 +35,7 @@ class OutputHandler:
     def should_ignore(self, path: Path) -> bool:
         """Check if a path should be ignored based on the ignore patterns."""
         return any(
-            fnmatch.fnmatch(part, pattern)
-            for part in path.absolute().parts
-            for pattern in self.ignore_patterns
+            fnmatch.fnmatch(path.name, pattern) for pattern in self.ignore_patterns
         )
 
     def walk_paths(self) -> Iterable[Path]:
