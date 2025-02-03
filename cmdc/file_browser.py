@@ -259,6 +259,7 @@ class FileBrowser:
                 instruction="Use Tab to select/unselect, type to search",
                 border=True,
                 max_height=8,
+                amark=" ✓ ",
                 transformer=transformer,
                 multiselect=True,
                 info=True,
@@ -270,8 +271,6 @@ class FileBrowser:
                     "toggle-all": [{"key": "c-a"}, {"key": "c-d"}],
                     "interrupt": [{"key": "c-c"}],
                 },
-                # The filter ensures that the value returned by execute() is the relative path,
-                # not the decorated display string.
                 filter=lambda result: [extract_relative(item) for item in result],
             ).execute()
 
