@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 import sys
 
-from cmdc import __version__
+from cmdc import __version__, ASCII_ART
 from cmdc.config_manager import ConfigManager
 from cmdc.file_browser import FileBrowser
 from cmdc.output_handler import OutputHandler
@@ -22,8 +22,8 @@ console = Console()
 def display_banner():
     """Display the cmdc banner."""
     banner_text = (
-        "[bold cyan]cmdc[/bold cyan]\n"
-        "Browse directories, preview content, and extract files for LLM context dumps."
+        f"[bold cyan]{ASCII_ART}[/bold cyan]\n"
+        "Navigate folders, pick files, and prepare them for LLM context dumps."
     )
     console.print(Panel(banner_text, style="bold green", expand=True))
 
