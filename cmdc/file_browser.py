@@ -19,6 +19,7 @@ from rich.progress import (
 from rich.tree import Tree
 
 from cmdc.utils import build_directory_tree, count_tokens
+from cmdc.prompt_style import get_custom_style
 
 console = Console()
 
@@ -208,13 +209,14 @@ class FileBrowser:
         # Print instructions in a separate panel
         console.print(
             Panel(
-                "[bold]Keyboard Shortcuts:[/bold]\n"
-                "↑/↓: Navigate • ←/→: Toggle • Enter: Confirm\n"
-                "Type to Search • Ctrl+A: Select All • Ctrl+D: Toggle All",
-                title="[bold]Instructions[/bold]",
-                border_style="green",
+                "↑/↓: Navigate • ←/→: Toggle • ↵: Confirm • "
+                "^A: Select All • ^D: Toggle All",
+                title="[bold]Keyboard Shortcuts[/bold]",
+                border_style="blue",
             )
         )
+
+        style = get_custom_style()
 
         if non_interactive:
             selected_files = [str(f.relative_to(self.directory)) for f in files]
@@ -251,13 +253,13 @@ class FileBrowser:
                 )
 
             selected_files = inquirer.fuzzy(
-                message="Select files to extract (type to search):",
+                message="Select files to extract:",
                 choices=choices,
-                cycle=True,
+                style=style,
+                border=True,
                 validate=lambda result: len(result) > 0,
                 invalid_message="Please select at least one file",
-                instruction="Use Tab to select/unselect, type to search",
-                border=True,
+                instruction="(type to search)",
                 max_height=8,
                 amark=" ✓ ",
                 transformer=transformer,

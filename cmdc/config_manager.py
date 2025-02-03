@@ -8,6 +8,7 @@ from InquirerPy import inquirer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from cmdc.prompt_style import get_custom_style
 
 console = Console()
 
@@ -82,6 +83,8 @@ class ConfigManager:
 
     def interactive_config(self) -> dict:
         """Run the interactive configuration setup process."""
+        style = get_custom_style()
+
         console.print(
             Panel(
                 "[bold cyan]Welcome to cmdc Configuration![/bold cyan]\n"
@@ -94,15 +97,15 @@ class ConfigManager:
         recursive = inquirer.confirm(
             message="Do you want to browse directories recursively by default?",
             default=False,
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
 
         default_depth_str = inquirer.text(
             message="Enter default scanning depth (e.g., 1 for immediate children):",
             default="1",
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
         try:
             default_depth = int(default_depth_str)
@@ -115,15 +118,15 @@ class ConfigManager:
         copy_to_clipboard = inquirer.confirm(
             message="Do you want to automatically copy selected content to clipboard?",
             default=True,
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
 
         print_to_console = inquirer.confirm(
             message="Do you want to print the context dump to console by default?",
             default=False,
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
 
         # File filtering
@@ -131,8 +134,8 @@ class ConfigManager:
         use_default_ignores = inquirer.confirm(
             message="Would you like to use the recommended ignore patterns?",
             default=True,
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
 
         if use_default_ignores:
@@ -141,8 +144,8 @@ class ConfigManager:
                 instruction="Space to toggle, Enter to confirm, ctrl+a to select all",
                 choices=default_patterns,
                 default=default_patterns,
-                qmark=" ? ",
-                amark=" ✓ ",
+                style=style,
+                amark="✓",
             ).execute()
         else:
             ignore_patterns = []
@@ -151,13 +154,12 @@ class ConfigManager:
         while inquirer.confirm(
             message="Would you like to add custom ignore patterns?",
             default=False,
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute():
             pattern = inquirer.text(
                 message="Enter pattern (e.g., *.log, temp/*, etc.):",
-                qmark=" ? ",
-                amark=" ✓ ",
+                style=style,
             ).execute()
             if pattern:
                 ignore_patterns.append(pattern)
@@ -166,8 +168,8 @@ class ConfigManager:
         use_filters = inquirer.confirm(
             message="Would you like to set default file extension filters?",
             default=False,
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
 
         filters = []
@@ -177,8 +179,7 @@ class ConfigManager:
                     message=(
                         "Enter file extension (e.g., .py) or press enter to finish:"
                     ),
-                    qmark=" ? ",
-                    amark=" ✓ ",
+                    style=style,
                 ).execute()
                 if not ext:
                     break
@@ -190,8 +191,8 @@ class ConfigManager:
         encoding_model = inquirer.text(
             message="Enter token encoding model to use (default: o200k_base):",
             default="o200k_base",
-            qmark=" ? ",
-            amark=" ✓ ",
+            style=style,
+            amark="✓",
         ).execute()
 
         return {
@@ -266,8 +267,8 @@ class ConfigManager:
                     "Configuration file already exists. Do you want to overwrite it?"
                 ),
                 default=False,
-                qmark=" ? ",
-                amark=" ✓ ",
+                style=get_custom_style(),
+                amark="✓",
             ).execute()
             if not overwrite:
                 console.print("[yellow]Configuration unchanged.[/yellow]")
