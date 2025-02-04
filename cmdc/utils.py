@@ -13,6 +13,43 @@ def clear_console() -> None:
         print("\033[H\033[J", end="")
 
 
+def _add_paths_to_tree(
+    current_dir: Path,
+    current_tree: Tree,
+    paths_by_parent: Dict[Path, List[Path]],
+    valid_paths: List[Path],
+    file_filter: Callable[[Path], bool],
+    style_directory: Callable[[str], str],
+    style_file: Callable[[str], str],
+) -> None:
+    """Recursively add paths to the tree."""
+    if current_dir not in paths_by_parent:
+        return
+
+    # Sort paths: directories first, then files
+    paths = sorted(
+        paths_by_parent[current_dir],
+        key=lambda p: (not p.is_dir(), p.name.lower()),
+    )
+
+    for path in paths:
+        if path.is_dir():
+            # Only add directories that are in our valid paths
+            if path in paths_by_parent or path in valid_paths:
+                sub_tree = current_tree.add(style_directory(path.name))
+                _add_paths_to_tree(
+                    path,
+                    sub_tree,
+                    paths_by_parent,
+                    valid_paths,
+                    file_filter,
+                    style_directory,
+                    style_file,
+                )
+        elif file_filter(path):
+            current_tree.add(style_file(path.name))
+
+
 def build_directory_tree(
     directory: Path,
     walk_function: Callable[[], Iterable[Path]],
@@ -48,27 +85,15 @@ def build_directory_tree(
             paths_by_parent[parent] = []
         paths_by_parent[parent].append(path)
 
-    def add_to_tree(current_dir: Path, current_tree: Tree) -> None:
-        """Recursively add paths to the tree."""
-        if current_dir not in paths_by_parent:
-            return
-
-        # Sort paths: directories first, then files
-        paths = sorted(
-            paths_by_parent[current_dir],
-            key=lambda p: (not p.is_dir(), p.name.lower()),
-        )
-
-        for path in paths:
-            if path.is_dir():
-                # Only add directories that are in our valid paths
-                if path in paths_by_parent or path in valid_paths:
-                    sub_tree = current_tree.add(style_directory(path.name))
-                    add_to_tree(path, sub_tree)
-            elif file_filter(path):
-                current_tree.add(style_file(path.name))
-
-    add_to_tree(directory, tree)
+    _add_paths_to_tree(
+        directory,
+        tree,
+        paths_by_parent,
+        valid_paths,
+        file_filter,
+        style_directory,
+        style_file,
+    )
     return tree
 
 
