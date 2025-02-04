@@ -55,6 +55,27 @@ class FileBrowser:
         self.depth = depth
         self.encoding_model = encoding_model
 
+    @staticmethod
+    def _extract_relative(display_str: str) -> str:
+        """
+        Extract the relative path from a display string of the form "path [X tokens]".
+        """
+        return display_str.split(" [")[0]
+
+    def _transform_selection(self, selected: List[str], token_counts: dict) -> str:
+        """
+        Transform the selection display to show file count and total token count.
+        """
+        if not selected:
+            return "No files selected"
+        total = sum(
+            token_counts.get(self._extract_relative(item), 0) for item in selected
+        )
+        return (
+            f"{len(selected)} file{'s' if len(selected) != 1 else ''} selected, "
+            f"total {total} tokens"
+        )
+
     def should_ignore(self, path: Path) -> bool:
         """
         Check if a path should be ignored based on the ignore patterns.
@@ -73,6 +94,24 @@ class FileBrowser:
         if not self.filters:
             return True
         return any(file.suffix == ext for ext in self.filters)
+
+    def _limited_walk(self, current: Path, current_level: int) -> Iterable[Path]:
+        """
+        Helper method for depth-limited directory traversal.
+        Yields paths up to the specified depth level.
+        """
+        try:
+            # yield only when current_level > 0.
+            # When depth==1, only immediate children will be yielded.
+            if current_level > 0 and not self.should_ignore(current):
+                yield current
+            if current.is_dir() and current_level < self.depth:
+                for child in current.iterdir():
+                    if self.should_ignore(child):
+                        continue
+                    yield from self._limited_walk(child, current_level + 1)
+        except PermissionError:
+            pass
 
     def walk_valid_paths(self) -> Iterable[Path]:
         """
@@ -94,22 +133,7 @@ class FileBrowser:
                         yield fpath
         elif self.depth is not None:
             # Use a limited depth traversal.
-            def limited_walk(current: Path, current_level: int):
-                # yield only when current_level > 0.
-                # When depth==1, only immediate children will be yielded.
-                try:
-                    # Recurse only if the current level is less than allowed depth.
-                    if current_level > 0 and not self.should_ignore(current):
-                        yield current
-                    if current.is_dir() and current_level < self.depth:
-                        for child in current.iterdir():
-                            if self.should_ignore(child):
-                                continue
-                            yield from limited_walk(child, current_level + 1)
-                except PermissionError:
-                    pass
-
-            yield from limited_walk(self.directory, 0)
+            yield from self._limited_walk(self.directory, 0)
         else:
             # Non-recursive mode (only immediate children)
             try:
@@ -235,24 +259,6 @@ class FileBrowser:
                 )
             ]
 
-            # Helper to extract the relative path from a choice's display string.
-            def extract_relative(display_str: str) -> str:
-                # Assumes the display string is of the form: "path [X tokens]"
-                return display_str.split(" [")[0]
-
-            # Custom transformer: shows both file count and total token count.
-            def transformer(selected):
-                if not selected:
-                    return "No files selected"
-                # 'selected' is a list of display strings, so extract the relative path for each.
-                total = sum(
-                    token_counts.get(extract_relative(item), 0) for item in selected
-                )
-                return (
-                    f"{len(selected)} file{'s' if len(selected) != 1 else ''} selected, "
-                    f"total {total} tokens"
-                )
-
             selected_files = inquirer.fuzzy(
                 message="Select files to include in the context dump:",
                 choices=choices,
@@ -263,7 +269,9 @@ class FileBrowser:
                 instruction="(type to search)",
                 max_height=8,
                 amark=" ✓ ",
-                transformer=transformer,
+                transformer=lambda selected: self._transform_selection(
+                    selected, token_counts
+                ),
                 multiselect=True,
                 info=True,
                 marker=" ◉ ",
@@ -274,7 +282,7 @@ class FileBrowser:
                     "toggle-all": [{"key": "c-a"}, {"key": "c-d"}],
                     "interrupt": [{"key": "c-c"}],
                 },
-                filter=lambda result: [extract_relative(item) for item in result],
+                filter=lambda result: [self._extract_relative(item) for item in result],
             ).execute()
 
             if not selected_files:
