@@ -8,14 +8,14 @@ Tired of Cmd+C'ing your way though files to feed your LLMs code context? Use cmd
 
 ## Features
 
-- 🌳 **Interactive Tree View**: Browse directories with a tree structure visualization
-- 🔍 **Fuzzy Search**: Quickly find and select files in large directories
-- 📋 **Clipboard Integration**: Automatically copy selected content to clipboard
-- 🏷️ **Structured Output**: XML-like tag format optimized for LLM context
-- 🔢 **Token Counter**: Built-in token counting using `tiktoken` for LLM context size awareness
-- ⚙️ **Configurable**: Extensive configuration options for ignore patterns, file filters, and more
-- 🎯 **Multiple Output Modes**: Output to clipboard, console, or file
-- ⌨️ **Intuitive Navigation**: Keyboard shortcuts for quick file selection
+- **Flexible Output**: Copies to clipboard by default, supports console, and file output
+- **Directory Browser**: Visual tree structure for easy directory navigation
+- **File Search**: Fast file search and selection with fuzzy matching
+- **LLM-Ready Format**: Structured output with XML-style tags
+- **Token Counting**: Built-in token counter for LLM context awareness
+- **Smart Ignore Rules**: Automatic parsing of project's .gitignore files
+- **Customizable**: Configurable ignore patterns and file filters
+
 
 ## Installation
 
@@ -44,6 +44,7 @@ This will open an interactive file browser where you can:
 - Select all files using Ctrl+A
 - Toggle all selections using Ctrl+D
 - Confirm selection with Enter
+- Selected files will be structured and copied to your clipboard
 
 ## Usage
 
@@ -69,8 +70,11 @@ cmdc --help
 # Filter by file extensions
 cmdc --filters .py .js .ts
 
-# Ignore specific patterns
+# Ignore specific patterns (combines with .gitignore rules)
 cmdc --ignore "node_modules" "*.pyc"
+
+# Disable .gitignore parsing
+cmdc --no-gitignore
 
 # Recursive directory traversal
 cmdc --recursive
@@ -109,7 +113,7 @@ cmdc --add-ignore "*.log" "temp/*"
 
 ## Output Format
 
-The tool generates structured output in an XML-like format:
+cmdc generates structured output in an XML-like format:
 
 ```xml
 <summary>
@@ -151,11 +155,12 @@ Example configuration:
 ```toml
 [cmdc]
 recursive = false
-depth = 1
+depth = 3
 copy_to_clipboard = true
 print_to_console = false
-ignore_patterns = [".git", "node_modules", "__pycache__", "*.pyc"]
-filters = [".py", ".js"]
+use_gitignore = true
+ignore_patterns = [ ".git", "node_modules", "__pycache__", "*.pyc", "venv", ".venv", "env", ".env", ".idea", ".vscode", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".cache", ".DS_Store"]
+filters = [".py", ".md"]
 tiktoken_model = "o200k_base"
 ```
 
@@ -166,6 +171,8 @@ You can override configuration using environment variables:
 - `CMDC_IGNORE`: Comma-separated list of ignore patterns
 - `CMDC_RECURSIVE`: Set to "true" for recursive mode
 - `CMDC_COPY_CLIPBOARD`: Set to "true" to enable clipboard copy
+- `CMDC_USE_GITIGNORE`: Set to "true" to use .gitignore patterns
+
 
 ## Contributing
 
