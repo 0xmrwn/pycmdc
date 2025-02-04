@@ -1,6 +1,10 @@
-"""cmdc - Interactive CLI tool for browsing and selecting files for LLM contexts."""
+"""
+cmdc - Interactive CLI tool for browsing and selecting files for LLM contexts.
+"""
 
-__version__ = "0.1.0"  # Keep in sync with pyproject.toml
+from importlib.metadata import version as get_version
+
+__version__ = get_version("pycmdc")
 
 ASCII_ART = """\
      ┓ ╻
