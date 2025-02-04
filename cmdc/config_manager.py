@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import toml
 import typer
@@ -8,7 +8,7 @@ from InquirerPy import inquirer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from cmdc.prompt_style import get_custom_style
+from cmdc.prompt_style import get_custom_style, get_style
 
 console = Console()
 
@@ -21,6 +21,7 @@ class ConfigManager:
     def __init__(self):
         self.config_dir = self.get_config_dir()
         self.config_path = self.config_dir / "config.toml"
+        self.current_directory = None
 
     @staticmethod
     def get_config_dir() -> Path:
@@ -74,6 +75,7 @@ class ConfigManager:
         return {
             "filters": [],
             "ignore_patterns": ConfigManager.get_default_ignore_patterns(),
+            "use_gitignore": True,  # Whether to automatically parse .gitignore files
             "recursive": False,
             "copy_to_clipboard": True,
             "print_to_console": False,
@@ -87,8 +89,8 @@ class ConfigManager:
 
         console.print(
             Panel(
-                "[bold cyan]Welcome to cmdc Configuration![/bold cyan]\n"
-                "Let's set up your preferences for the file browser.",
+                "[bold cyan]Configuration Setup[/bold cyan]\n"
+                "Set defaults for file browsing and output.",
                 style="bold green",
             )
         )
@@ -125,6 +127,14 @@ class ConfigManager:
         print_to_console = inquirer.confirm(
             message="Do you want to print the context dump to console by default?",
             default=False,
+            style=style,
+            amark="✓",
+        ).execute()
+
+        # Gitignore integration
+        use_gitignore = inquirer.confirm(
+            message="Do you want to automatically use .gitignore files in scanned directories?",
+            default=True,
             style=style,
             amark="✓",
         ).execute()
@@ -200,6 +210,7 @@ class ConfigManager:
             "depth": default_depth,
             "copy_to_clipboard": copy_to_clipboard,
             "print_to_console": print_to_console,
+            "use_gitignore": use_gitignore,
             "ignore_patterns": ignore_patterns,
             "filters": filters,
             "tiktoken_model": encoding_model,
@@ -245,29 +256,89 @@ class ConfigManager:
             env_config["copy_to_clipboard"] = (
                 os.getenv("CMDC_COPY_CLIPBOARD").lower() == "true"
             )
+        if os.getenv("CMDC_USE_GITIGNORE"):
+            env_config["use_gitignore"] = (
+                os.getenv("CMDC_USE_GITIGNORE").lower() == "true"
+            )
         return env_config
 
-    def load_config(self) -> dict:
+    @staticmethod
+    def get_gitignore_patterns(directory: Path) -> List[str]:
+        """
+        Parse .gitignore file in the given directory and return valid ignore patterns.
+        Skips comments and empty lines.
+
+        Handles directory-specific patterns by:
+        1. Removing trailing slashes from directory patterns
+        2. Converting directory patterns to match both the dir and its contents
+        """
+        gitignore_path = directory / ".gitignore"
+        patterns = []
+
+        if gitignore_path.exists():
+            try:
+                with open(gitignore_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            # Remove trailing slash if present
+                            if line.endswith("/"):
+                                line = line.rstrip("/")
+                            patterns.append(line)
+                            # For directory patterns, also add pattern with /* to match contents
+                            if not any(c in line for c in ["*", "?", "["]):
+                                patterns.append(f"{line}/*")
+            except Exception as e:
+                console.print(
+                    Panel(
+                        f"[yellow]Warning:[/yellow] Error reading .gitignore file: {e}",
+                        style="yellow",
+                    )
+                )
+
+        return patterns
+
+    def load_config(self, directory: Optional[Path] = None) -> dict:
         """
         Load configuration using a layered approach:
         1. Start with defaults
         2. Update with file config
-        3. Update with environment variables
+        3. Update with gitignore patterns (if enabled and directory provided)
+        4. Update with environment variables
         """
         config = self.get_default_config()
         config.update(self.get_file_config())
+
+        # Add gitignore patterns if enabled and directory is provided
+        if directory is not None and config.get("use_gitignore", True):
+            gitignore_patterns = self.get_gitignore_patterns(directory)
+            if gitignore_patterns:
+                # Combine existing and gitignore patterns, removing duplicates
+                existing_patterns = set(config.get("ignore_patterns", []))
+                combined_patterns = sorted(
+                    list(existing_patterns | set(gitignore_patterns))
+                )
+                config["ignore_patterns"] = combined_patterns
+
         config.update(self.get_env_config())
         return config
 
     def handle_config(self, force: bool) -> None:
         """Handle the interactive configuration setup process."""
         if self.config_path.exists() and not force:
+            # Get the base style and override specific styles for this prompt
+            base_style = {
+                "question": "#FF7520 bold",  # Change to desired color
+                "answered_question": "#AC4F15 bold",  # Change to desired color
+            }
+            custom_style = get_style(base_style, style_override=False)
+
             overwrite = inquirer.confirm(
                 message=(
                     "Configuration file already exists. Do you want to overwrite it?"
                 ),
                 default=False,
-                style=get_custom_style(),
+                style=custom_style,
                 amark="✓",
             ).execute()
             if not overwrite:
@@ -280,9 +351,10 @@ class ConfigManager:
                 toml.dump({"cmdc": config_data}, f)
             console.print(
                 Panel(
-                    "[green]Configuration saved successfully to:[/green]\n"
+                    "[bold green]Configuration saved successfully to:[/bold green]\n"
                     f"{self.config_path}",
                     title="Success",
+                    border_style="green",
                 )
             )
         except Exception as e:
