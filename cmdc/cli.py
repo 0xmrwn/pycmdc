@@ -113,6 +113,11 @@ def main(
         "--non-interactive",
         help="Select all matching files without prompting.",
     ),
+    use_gitignore: Optional[bool] = typer.Option(
+        None,
+        "--use-gitignore/--no-gitignore",
+        help="Whether to use .gitignore files in scanned directories (overrides config).",
+    ),
     depth: Optional[int] = typer.Option(
         None,
         "--depth",
@@ -155,15 +160,17 @@ def main(
         raise typer.Exit()
 
     # Load the layered configuration.
-    config = config_manager.load_config()
+    if directory is None:
+        directory = Path.cwd()
+    config = config_manager.load_config(directory)
 
-    # Override tiktoken model if provided on the command line
+    # Override settings if provided on command line
+    if use_gitignore is not None:
+        config["use_gitignore"] = use_gitignore
     if encoding_model is not None:
         config["tiktoken_model"] = encoding_model
 
     # Use command-line arguments to override or complement configuration defaults.
-    if directory is None:
-        directory = Path.cwd()
     if filters is None:
         filters = config.get("filters", [])
     if ignore is None:
