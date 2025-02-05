@@ -1,8 +1,10 @@
 # pycmdc
 
-[![PyPI version](https://badge.fury.io/py/pycmdc.svg)](https://badge.fury.io/py/pycmdc)
 [![Python Version](https://img.shields.io/pypi/pyversions/pycmdc.svg)](https://pypi.org/project/pycmdc/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://badge.fury.io/py/pycmdc.svg)](https://badge.fury.io/py/pycmdc)
+[![CI](https://github.com/0xmrwn/pycmdc/actions/workflows/ci.yml/badge.svg)](https://github.com/0xmrwn/pycmdc/actions/workflows/ci.yml)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/0xmrwn/pycmdc/main.svg)](https://results.pre-commit.ci/latest/github/0xmrwn/pycmdc/main)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Tired of Cmd+C'ing your way though files to feed your LLMs code context? Use cmdc instead to browse, grab, and format your code with style. Stop the manual copy-paste madness.
 
