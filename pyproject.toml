@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycmdc"
-version = "1.0.0"
+version = "1.0.1"
 description = "Ditch the copy-paste madness - browse, select, and format code for LLMs, keyboard-only."
 authors = ["0xmrwn <niches-anode0k@icloud.com>"]
 license = "MIT"

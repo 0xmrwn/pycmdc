@@ -1,3 +1,9 @@
+## 1.0.1 (2025-02-05)
+
+### Fix
+
+- **ci**: add missing permissions for OIDC publishing (#9)
+
 ## 1.0.0 (2025-02-05)
 
 ### Feat
