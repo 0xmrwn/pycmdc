@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'cmdc/**'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - '!README.md'
+      - '!.gitignore'
+      - '!.pre-commit-config.yaml'
+      - '!tests/**'
+      - '!.github/**'
 
 permissions:
   contents: write
