@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycmdc"
-version = "0.1.0"
+version = "0.2.0"
 description = "An interactive CLI tool for browsing, selecting, and extracting file contents with a rich tree view and intuitive navigation."
 authors = ["0xmrwn <niches-anode0k@icloud.com>"]
 license = "MIT"
