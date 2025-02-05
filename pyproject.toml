@@ -23,6 +23,12 @@ cmdc = "cmdc.__main__:app"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
+commitizen = "^4.1.1"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+changelog = "CHANGELOG.md"
+update_changelog_on_bump = true
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
