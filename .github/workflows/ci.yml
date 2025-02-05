@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  commit-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python and Poetry
+        id: setup-poetry
+        uses: ./.github/actions/setup-poetry
+        with:
+          python_version: "3.12"
+
+      - name: Determine commit range
+        id: commit_range
+        run: |
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            echo "Running in PR context: Checking commits from origin/$GITHUB_BASE_REF..HEAD"
+            echo "REV_RANGE=origin/$GITHUB_BASE_REF..HEAD" >> $GITHUB_OUTPUT
+          else
+            BASE=$(git merge-base HEAD origin/${GITHUB_REF#refs/heads/})
+            echo "Running in push context: Checking commits from $BASE..HEAD"
+            echo "REV_RANGE=$BASE..HEAD" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Conventional Commits Check
+        run: |
+          rev_range="${{ steps.commit_range.outputs.REV_RANGE }}"
+          echo "Checking commits with range: $rev_range"
+          poetry run cz check --rev-range "$rev_range"
+
+  lint-and-test:
+    needs: [commit-check]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python and Poetry
+        id: setup-poetry
+        uses: ./.github/actions/setup-poetry
+        with:
+          python_version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: |
+          poetry run pytest --maxfail=1 --disable-warnings -v
