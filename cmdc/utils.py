@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Callable, Iterable
-from rich.tree import Tree
+from typing import Callable, Dict, Iterable, List
+
 import tiktoken
+from rich.tree import Tree
 
 
 def clear_console() -> None:

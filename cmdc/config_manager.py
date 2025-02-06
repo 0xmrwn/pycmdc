@@ -8,6 +8,7 @@ from InquirerPy import inquirer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
 from cmdc.prompt_style import get_custom_style, get_style
 
 console = Console()
