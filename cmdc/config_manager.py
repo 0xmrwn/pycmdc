@@ -68,6 +68,13 @@ class ConfigManager:
             ".tox",
             ".mypy_cache",
             ".ruff_cache",
+            "*.log",
+            ".terraform",
+            ".terraform.lock.hcl",
+            "*.tfstate",
+            "*.tfstate.backup",
+            "*.tfvars",
+            "*.tfvars.json",
         ]
 
     @staticmethod
