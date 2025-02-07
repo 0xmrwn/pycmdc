@@ -1,5 +1,4 @@
 name: "Setup Python and Poetry"
-
 description: "Sets up Python, installs Poetry, caches dependency environments, and installs dependencies."
 
 inputs:
@@ -16,6 +15,7 @@ outputs:
 runs:
   using: "composite"
   steps:
+
     - name: Set up Python
       id: setup-python
       uses: actions/setup-python@v5
@@ -23,17 +23,21 @@ runs:
         python-version: ${{ inputs.python_version }}
         cache: "poetry"
 
-    - name: Install Poetry and dependencies
+    - name: Cache Poetry installation
+      uses: actions/cache@v4
+      with:
+        path: ~/.local
+        key: poetry-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Install dependencies
       shell: bash
-      run: |
-        # (Optional) Upgrade pip
-        python -m pip install --upgrade pip
-
-        # Install Poetry via pip
-        pip install poetry
-
-        # Now, we can call `poetry` in the same script
-        poetry install --no-ansi --no-interaction
+      run: poetry install --no-interaction --no-ansi
 
     - name: Set outputs
       id: set-outputs
