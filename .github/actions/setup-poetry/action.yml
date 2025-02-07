@@ -1,4 +1,5 @@
 name: "Setup Python and Poetry"
+
 description: "Sets up Python, installs Poetry, caches dependency environments, and installs dependencies."
 
 inputs:
@@ -15,7 +16,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-
     - name: Set up Python
       id: setup-python
       uses: actions/setup-python@v5
@@ -28,6 +28,12 @@ runs:
       with:
         virtualenvs-create: true
         virtualenvs-in-project: true
+
+    - name: Export PATH for Poetry
+      # This step ensures that any new PATH directories from snok/install-poetry
+      # are retained for the subsequent steps in the composite action.
+      shell: bash
+      run: echo "PATH=${HOME}/.poetry/bin:\$PATH" >> $GITHUB_ENV
 
     - name: Install dependencies
       shell: bash
