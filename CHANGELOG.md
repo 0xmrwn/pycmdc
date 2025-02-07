@@ -1,3 +1,9 @@
+## 1.1.0 (2025-02-07)
+
+### Feat
+
+- upgrade to Python 3.13 and optimize CI/CD workflows (#10)
+
 ## 1.0.1 (2025-02-05)
 
 ### Fix
