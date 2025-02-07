@@ -1,7 +1,7 @@
-from pathlib import Path
-from typing import List, Iterable
-from io import StringIO
 import fnmatch
+from io import StringIO
+from pathlib import Path
+from typing import Iterable, List
 
 import pyperclip
 import typer
@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from cmdc.utils import build_directory_tree
 from cmdc.config_manager import ConfigManager
+from cmdc.utils import build_directory_tree
 
 console = Console()
 

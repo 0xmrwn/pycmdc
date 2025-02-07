@@ -1,25 +1,25 @@
-from pathlib import Path
-from typing import List, Iterable, Optional, Tuple
-
 import fnmatch
 import os
+from pathlib import Path
+from typing import Iterable, List, Optional, Tuple
+
 import typer
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
     TimeRemainingColumn,
 )
 from rich.tree import Tree
 
-from cmdc.utils import build_directory_tree, count_tokens
 from cmdc.prompt_style import get_custom_style
+from cmdc.utils import build_directory_tree, count_tokens
 
 console = Console()
 

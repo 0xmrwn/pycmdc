@@ -8,6 +8,7 @@ from InquirerPy import inquirer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
 from cmdc.prompt_style import get_custom_style, get_style
 
 console = Console()
@@ -67,6 +68,13 @@ class ConfigManager:
             ".tox",
             ".mypy_cache",
             ".ruff_cache",
+            "*.log",
+            ".terraform",
+            ".terraform.lock.hcl",
+            "*.tfstate",
+            "*.tfstate.backup",
+            "*.tfvars",
+            "*.tfvars.json",
         ]
 
     @staticmethod
@@ -148,17 +156,7 @@ class ConfigManager:
             amark="✓",
         ).execute()
 
-        if use_default_ignores:
-            ignore_patterns = inquirer.checkbox(
-                message="Select patterns to ignore:",
-                instruction="Space to toggle, Enter to confirm, ctrl+a to select all",
-                choices=default_patterns,
-                default=default_patterns,
-                style=style,
-                amark="✓",
-            ).execute()
-        else:
-            ignore_patterns = []
+        ignore_patterns = default_patterns if use_default_ignores else []
 
         # Allow adding custom patterns
         while inquirer.confirm(

@@ -33,7 +33,7 @@ jobs:
         id: setup-poetry
         uses: ./.github/actions/setup-poetry
         with:
-          python_version: "3.12"
+          python_version: "3.13"
 
       - name: Configure git identity
         run: |

@@ -1,16 +1,15 @@
-# cmdc/cli.py
-import typer
+import sys
 from pathlib import Path
 from typing import List, Optional
-import sys
 
-from cmdc import __version__, ASCII_ART
+import typer
+from rich.console import Console
+from rich.panel import Panel
+
+from cmdc import ASCII_ART, __version__
 from cmdc.config_manager import ConfigManager
 from cmdc.file_browser import FileBrowser
 from cmdc.output_handler import OutputHandler
-
-from rich.console import Console
-from rich.panel import Panel
 
 app = typer.Typer(
     help="Interactive CLI tool for browsing and selecting files for LLM contexts.",
