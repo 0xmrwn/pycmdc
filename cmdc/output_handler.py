@@ -1,6 +1,6 @@
 import fnmatch
 from pathlib import Path
-from typing import List
+from typing import List, Iterable
 
 import pyperclip
 import typer
@@ -32,12 +32,28 @@ class OutputHandler:
         self.ignore_patterns = ignore_patterns or []
 
     def should_ignore(self, path: Path) -> bool:
-        """Check if a path should be ignored based on the ignore patterns."""
-        return any(
-            fnmatch.fnmatch(part, pattern)
-            for part in path.absolute().parts
-            for pattern in self.ignore_patterns
-        )
+        """
+        Check if a path should be ignored based on the ignore patterns.
+        For filename-only patterns (like *.log), check only against the filename.
+        For directory-like patterns (those without * or ? wildcards), check against full path.
+        """
+        # For each pattern, determine how to apply it
+        for pattern in self.ignore_patterns:
+            # Simple filename pattern with wildcard (like *.log, *ignore*)
+            if "*" in pattern or "?" in pattern:
+                if fnmatch.fnmatch(path.name, pattern):
+                    return True
+            # Directory/path-based pattern (like node_modules, .git)
+            else:
+                if any(part == pattern for part in path.absolute().parts):
+                    return True
+        return False
+
+    def walk_paths(self) -> Iterable[Path]:
+        """Walk through directory yielding paths that aren't ignored."""
+        for path in self.directory.rglob("*"):
+            if not self.should_ignore(path):
+                yield path
 
     def create_directory_tree(self) -> str:
         """Create an XML representation of the directory tree."""
