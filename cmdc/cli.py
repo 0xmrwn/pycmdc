@@ -215,6 +215,7 @@ def main(
         directory=directory,
         copy_to_clipboard=config.get("copy_to_clipboard", True),
         print_to_console=should_print_to_console,
+        ignore_patterns=ignore,
     )
     success, output_path = output_handler.process_output(selected_files, output)
 
