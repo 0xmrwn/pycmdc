@@ -1,7 +1,6 @@
 import fnmatch
-from io import StringIO
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
 
 import pyperclip
 import typer
@@ -9,8 +8,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from cmdc.config_manager import ConfigManager
-from cmdc.utils import build_directory_tree
 
 console = Console()
 
@@ -23,41 +20,60 @@ class OutputHandler:
     """
 
     def __init__(
-        self, directory: Path, copy_to_clipboard: bool, print_to_console: bool = False
+        self,
+        directory: Path,
+        copy_to_clipboard: bool,
+        print_to_console: bool = False,
+        ignore_patterns: List[str] = None,
     ):
         self.directory = directory
         self.copy_to_clipboard = copy_to_clipboard
         self.print_to_console = print_to_console
-        self.config_manager = ConfigManager()
-        self.config = self.config_manager.load_config()
-        self.ignore_patterns = self.config.get("ignore_patterns", [])
+        self.ignore_patterns = ignore_patterns or []
 
     def should_ignore(self, path: Path) -> bool:
         """Check if a path should be ignored based on the ignore patterns."""
         return any(
-            fnmatch.fnmatch(path.name, pattern) for pattern in self.ignore_patterns
+            fnmatch.fnmatch(part, pattern)
+            for part in path.absolute().parts
+            for pattern in self.ignore_patterns
         )
-
-    def walk_paths(self) -> Iterable[Path]:
-        """Walk through directory yielding paths that aren't ignored."""
-        for path in self.directory.rglob("*"):
-            if not self.should_ignore(path):
-                yield path
 
     def create_directory_tree(self) -> str:
-        """Create a text representation of the directory tree."""
-        # Create a string buffer console to capture the tree output without colors
-        string_console = Console(file=StringIO(), force_terminal=False, no_color=True)
+        """Create an XML representation of the directory tree."""
+        xml_output = '<?xml version="1.0" encoding="UTF-8"?>\n<tree>\n'
 
-        # Build the tree with no styling (plain text)
-        tree = build_directory_tree(
-            directory=self.directory,
-            walk_function=self.walk_paths,
-            file_filter=lambda _: True,  # Include all files that weren't ignored
-        )
+        # Start with the root directory
+        xml_output += f'  <directory name="{self.directory.name}">\n'
 
-        string_console.print(tree)
-        return string_console.file.getvalue().rstrip()
+        # Build directory structure recursively
+        def build_xml_tree(directory, indent="    "):
+            nonlocal xml_output
+
+            # Sort entries: directories first, then files
+            try:
+                entries = sorted(
+                    [p for p in directory.iterdir() if not self.should_ignore(p)],
+                    key=lambda p: (not p.is_dir(), p.name.lower()),
+                )
+            except PermissionError:
+                # Skip directories we don't have permission to read
+                return
+
+            for entry in entries:
+                if entry.is_dir():
+                    xml_output += f'{indent}<directory name="{entry.name}">\n'
+                    build_xml_tree(entry, indent + "  ")
+                    xml_output += f"{indent}</directory>\n"
+                else:
+                    # Check if it's a file (and not a symlink, etc.)
+                    if entry.is_file():
+                        xml_output += f'{indent}<file name="{entry.name}"/>\n'
+
+        build_xml_tree(self.directory)
+        xml_output += "  </directory>\n</tree>"
+
+        return xml_output
 
     def create_summary_section(self, selected_files: List[str]) -> str:
         """Create a summary section with the list of files and directory tree."""
