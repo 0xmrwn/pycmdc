@@ -1,3 +1,9 @@
+## 1.2.0 (2025-04-25)
+
+### Feat
+
+- **output**: add support for ignore patterns in directory tree generation
+
 ## 1.1.0 (2025-02-07)
 
 ### Feat
