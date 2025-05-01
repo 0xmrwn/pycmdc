@@ -1,3 +1,9 @@
+## 1.2.2 (2025-05-01)
+
+### Fix
+
+- **output_handler**: streamline output processing and improve error handling (#20)
+
 ## 1.2.1 (2025-05-01)
 
 ### Fix
