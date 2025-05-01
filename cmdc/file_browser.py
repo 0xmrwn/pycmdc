@@ -79,12 +79,21 @@ class FileBrowser:
     def should_ignore(self, path: Path) -> bool:
         """
         Check if a path should be ignored based on the ignore patterns.
+        For filename-only patterns (like *.log), check only against the filename.
+        For directory-like patterns (those without * or ? wildcards), check against full path.
         """
-        return any(
-            fnmatch.fnmatch(part, pattern)
-            for part in path.absolute().parts
-            for pattern in self.ignore_patterns
-        )
+        # For each pattern, determine how to apply it
+        for pattern in self.ignore_patterns:
+            # Simple filename pattern with wildcard (like *.log, *ignore*)
+            if "*" in pattern or "?" in pattern:
+                if fnmatch.fnmatch(path.name, pattern):
+                    return True
+            # Directory/path-based pattern (like node_modules, .git)
+            else:
+                # Check if any part of the absolute path *equals* the pattern
+                if any(part == pattern for part in path.absolute().parts):
+                    return True
+        return False
 
     def file_matches_filter(self, file: Path) -> bool:
         """
