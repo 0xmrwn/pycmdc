@@ -6,7 +6,6 @@ import pyperclip
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 
 
 console = Console()
@@ -114,57 +113,55 @@ class OutputHandler:
         """
         Process and output the selected files' contents.
         """
-        output_text = self.create_summary_section(selected_files)
+        # 1. Generate summary FIRST
+        summary_content = self.create_summary_section(selected_files)
 
-        # Simply use the print_to_console setting that was determined by the CLI
-        if self.print_to_console:
-            console.print(
-                Panel("[bold green]Extracted File Contents[/bold green]", expand=False)
-            )
-            console.print(output_text)
-
+        # 2. Generate file contents separately
+        files_content_builder = []
         for file_path_str in selected_files:
             file_path = self.directory / file_path_str
             try:
                 content = file_path.read_text(encoding="utf-8")
-                # Always add to output_text for clipboard/file
-                output_text += f"\n<open_file>\n{file_path_str}\n"
-                output_text += f"<contents>\n{content}\n</contents>\n"
-                output_text += "</open_file>\n"
-
-                # Only print to console if enabled
-                if self.print_to_console:
-                    syntax = Syntax(
-                        content,
-                        file_path.suffix.lstrip("."),
-                        theme="monokai",
-                        line_numbers=False,
-                        word_wrap=True,
-                    )
-                    console.print("\n<open_file>")
-                    console.print(file_path_str)
-                    console.print("<contents>")
-                    console.print(syntax)
-                    console.print("</contents>")
-                    console.print("</open_file>\n")
+                files_content_builder.append(f"\n<open_file>\n{file_path_str}\n")
+                files_content_builder.append(f"<contents>\n{content}\n</contents>\n")
+                files_content_builder.append("</open_file>\n")
             except Exception as e:
                 error_msg = f"\nError reading {file_path_str}: {e}\n"
-                output_text += error_msg
-                if self.print_to_console:
-                    console.print(f"[red]{error_msg}[/red]")
+                files_content_builder.append(error_msg)  # Append errors too
+        files_content = "".join(files_content_builder)
 
+        # 3. Combine them for final output
+        output_text = summary_content + files_content
+
+        # 4. Handle console printing
+        if self.print_to_console:
+            console.print(Panel("[bold green]Summary[/bold green]", expand=False))
+            # Print XML summary directly to console
+            console.print(summary_content)
+            console.print(
+                Panel("[bold green]Extracted File Contents[/bold green]", expand=False)
+            )
+            # Print raw file contents string to console
+            # Per-file syntax highlighting is lost here, but ensures clipboard correctness.
+            # We could re-introduce syntax highlighting by looping again, but let's prioritize clipboard.
+            console.print(files_content)
+
+        # 5. Handle clipboard
         if output_mode.lower() == "console" and self.copy_to_clipboard:
             try:
-                pyperclip.copy(output_text)
+                pyperclip.copy(output_text)  # Copy the combined text
                 return True, None  # Success with no file path
             except Exception as e:
                 console.print(Panel(f"Failed to copy to clipboard: {e}", style="red"))
                 return False, None
 
+        # 6. Handle file output
         if output_mode.lower() != "console":
             try:
                 output_file = Path(output_mode)
-                output_file.write_text(output_text, encoding="utf-8")
+                output_file.write_text(
+                    output_text, encoding="utf-8"
+                )  # Write combined text
                 return True, str(output_file.resolve())  # Success with file path
             except Exception as e:
                 console.print(Panel(f"Error writing to output file: {e}", style="red"))
