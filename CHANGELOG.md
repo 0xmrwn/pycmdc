@@ -1,3 +1,9 @@
+## 1.2.1 (2025-05-01)
+
+### Fix
+
+- **file_browser**: enhance ignore pattern handling in should_ignore method
+
 ## 1.2.0 (2025-04-25)
 
 ### Feat
