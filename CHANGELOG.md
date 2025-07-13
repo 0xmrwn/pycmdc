@@ -1,3 +1,9 @@
+## 1.3.0 (2025-07-13)
+
+### Feat
+
+- add dummy comment to trigger release (#26)
+
 ## 1.2.3 (2025-07-13)
 
 ### Fix
