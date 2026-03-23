@@ -41,7 +41,7 @@ class OutputHandler:
         for pattern in self.ignore_patterns:
             # Simple filename pattern with wildcard (like *.log, *ignore*)
             if "*" in pattern or "?" in pattern:
-                if fnmatch.fnmatch(path.name, pattern):
+                if fnmatch.fnmatch(path.stem, pattern):
                     return True
             # Directory/path-based pattern (like node_modules, .git)
             else:
