@@ -1,6 +1,5 @@
 import pytest
 import toml
-
 from cmdc.config_manager import ConfigManager
 
 # --- Fixtures ---
@@ -118,7 +117,7 @@ def test_add_ignore_patterns(temp_config_dir, capsys):
     new_patterns = ["custom_ignore"]
     cm.add_ignore_patterns(new_patterns)
     # Read the config file to verify the update.
-    with open(cm.config_path, "r") as f:
+    with open(cm.config_path) as f:
         config_data = toml.load(f)
     ignore_patterns = config_data["cmdc"]["ignore_patterns"]
     assert "custom_ignore" in ignore_patterns

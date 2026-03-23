@@ -1,12 +1,13 @@
+from __future__ import annotations
+
 import fnmatch
+from collections.abc import Iterable
 from pathlib import Path
-from typing import List, Iterable
 
 import pyperclip
 import typer
 from rich.console import Console
 from rich.panel import Panel
-
 
 console = Console()
 
@@ -23,7 +24,7 @@ class OutputHandler:
         directory: Path,
         copy_to_clipboard: bool,
         print_to_console: bool = False,
-        ignore_patterns: List[str] = None,
+        ignore_patterns: list[str] | None = None,
     ):
         self.directory = directory
         self.copy_to_clipboard = copy_to_clipboard
@@ -90,7 +91,7 @@ class OutputHandler:
 
         return xml_output
 
-    def create_summary_section(self, selected_files: List[str]) -> str:
+    def create_summary_section(self, selected_files: list[str]) -> str:
         """Create a summary section with the list of files and directory tree."""
         summary = "<summary>\n"
 
@@ -109,7 +110,7 @@ class OutputHandler:
         summary += "</summary>\n"
         return summary
 
-    def process_output(self, selected_files: List[str], output_mode: str) -> tuple:
+    def process_output(self, selected_files: list[str], output_mode: str) -> tuple:
         """
         Process and output the selected files' contents.
         """
@@ -165,6 +166,6 @@ class OutputHandler:
                 return True, str(output_file.resolve())  # Success with file path
             except Exception as e:
                 console.print(Panel(f"Error writing to output file: {e}", style="red"))
-                raise typer.Exit(code=1)
+                raise typer.Exit(code=1) from e
 
         return True, None  # Default success case

@@ -3,7 +3,6 @@ from pathlib import Path
 import pyperclip
 import pytest
 import typer
-
 from cmdc.output_handler import OutputHandler
 
 

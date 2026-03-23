@@ -1,6 +1,7 @@
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List
+from typing import Callable
 
 import tiktoken
 from rich.tree import Tree
@@ -17,8 +18,8 @@ def clear_console() -> None:
 def _add_paths_to_tree(
     current_dir: Path,
     current_tree: Tree,
-    paths_by_parent: Dict[Path, List[Path]],
-    valid_paths: List[Path],
+    paths_by_parent: dict[Path, list[Path]],
+    valid_paths: list[Path],
     file_filter: Callable[[Path], bool],
     style_directory: Callable[[str], str],
     style_file: Callable[[str], str],
@@ -77,7 +78,7 @@ def build_directory_tree(
     valid_paths = list(walk_function())
 
     # Create a mapping of parent directories to their children
-    paths_by_parent: Dict[Path, List[Path]] = {}
+    paths_by_parent: dict[Path, list[Path]] = {}
     for path in valid_paths:
         if path == directory:
             continue

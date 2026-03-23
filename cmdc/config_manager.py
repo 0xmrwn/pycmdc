@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import toml
 import typer
@@ -45,7 +45,7 @@ class ConfigManager:
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def get_default_ignore_patterns() -> List[str]:
+    def get_default_ignore_patterns() -> list[str]:
         """Return the default list of ignore patterns."""
         return [
             ".git",
@@ -244,24 +244,20 @@ class ConfigManager:
     def get_env_config() -> dict:
         """Load configuration from environment variables."""
         env_config = {}
-        if os.getenv("CMDC_FILTERS"):
-            env_config["filters"] = os.getenv("CMDC_FILTERS").split(",")
-        if os.getenv("CMDC_IGNORE"):
-            env_config["ignore_patterns"] = os.getenv("CMDC_IGNORE").split(",")
-        if os.getenv("CMDC_RECURSIVE"):
-            env_config["recursive"] = os.getenv("CMDC_RECURSIVE").lower() == "true"
-        if os.getenv("CMDC_COPY_CLIPBOARD"):
-            env_config["copy_to_clipboard"] = (
-                os.getenv("CMDC_COPY_CLIPBOARD").lower() == "true"
-            )
-        if os.getenv("CMDC_USE_GITIGNORE"):
-            env_config["use_gitignore"] = (
-                os.getenv("CMDC_USE_GITIGNORE").lower() == "true"
-            )
+        if val := os.getenv("CMDC_FILTERS"):
+            env_config["filters"] = val.split(",")
+        if val := os.getenv("CMDC_IGNORE"):
+            env_config["ignore_patterns"] = val.split(",")
+        if val := os.getenv("CMDC_RECURSIVE"):
+            env_config["recursive"] = val.lower() == "true"
+        if val := os.getenv("CMDC_COPY_CLIPBOARD"):
+            env_config["copy_to_clipboard"] = val.lower() == "true"
+        if val := os.getenv("CMDC_USE_GITIGNORE"):
+            env_config["use_gitignore"] = val.lower() == "true"
         return env_config
 
     @staticmethod
-    def get_gitignore_patterns(directory: Path) -> List[str]:
+    def get_gitignore_patterns(directory: Path) -> list[str]:
         """
         Parse .gitignore file in the given directory and return valid ignore patterns.
         Skips comments and empty lines.
@@ -275,7 +271,7 @@ class ConfigManager:
 
         if gitignore_path.exists():
             try:
-                with open(gitignore_path, "r", encoding="utf-8") as f:
+                with open(gitignore_path, encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith("#"):
@@ -361,7 +357,7 @@ class ConfigManager:
                     f"[red]Error saving configuration:[/red]\n{str(e)}", title="Error"
                 )
             )
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
     def display_config(self) -> None:
         """Display the current configuration in a nicely formatted way."""
@@ -447,18 +443,18 @@ class ConfigManager:
         )
         console.print()
 
-    def add_ignore_patterns(self, new_patterns: List[str]) -> None:
+    def add_ignore_patterns(self, new_patterns: list[str]) -> None:
         """Add new patterns to the ignore list in the configuration."""
         self.ensure_config_dir()
 
         # Load existing config or create new one
         if self.config_path.exists():
             try:
-                with open(self.config_path, "r") as f:
+                with open(self.config_path) as f:
                     config = toml.load(f)
             except Exception as e:
                 console.print(f"[red]Error reading config file: {e}[/red]")
-                raise typer.Exit(1)
+                raise typer.Exit(1) from e
         else:
             config = {"cmdc": self.get_default_config()}
 
@@ -507,4 +503,4 @@ class ConfigManager:
                 )
         except Exception as e:
             console.print(f"[red]Error saving config file: {e}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e

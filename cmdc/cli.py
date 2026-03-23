@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -69,7 +69,7 @@ def main(
         "--list-ignore",
         help="Display the full list of ignore patterns in a detailed view.",
     ),
-    add_ignore: Optional[List[str]] = typer.Option(
+    add_ignore: Optional[list[str]] = typer.Option(
         None,
         "--add-ignore",
         help="Add new patterns to the ignore list in the configuration.",
@@ -89,7 +89,7 @@ def main(
         "-o",
         help="Output mode: 'console' or a filename to save the extracted content.",
     ),
-    filters: Optional[List[str]] = typer.Option(
+    filters: Optional[list[str]] = typer.Option(
         None,
         "--filters",
         "-f",
@@ -101,7 +101,7 @@ def main(
         "-r",
         help="Recursively traverse subdirectories.",
     ),
-    ignore: Optional[List[str]] = typer.Option(
+    ignore: Optional[list[str]] = typer.Option(
         None,
         "--ignore",
         "-i",
@@ -161,21 +161,21 @@ def main(
     # Load the layered configuration.
     if directory is None:
         directory = Path.cwd()
-    config = config_manager.load_config(directory)
+    cfg = config_manager.load_config(directory)
 
     # Override settings if provided on command line
     if use_gitignore is not None:
-        config["use_gitignore"] = use_gitignore
+        cfg["use_gitignore"] = use_gitignore
     if encoding_model is not None:
-        config["tiktoken_model"] = encoding_model
+        cfg["tiktoken_model"] = encoding_model
 
     # Use command-line arguments to override or complement configuration defaults.
     if filters is None:
-        filters = config.get("filters", [])
+        filters = cfg.get("filters", [])
     if ignore is None:
-        ignore = config.get("ignore_patterns", [])
+        ignore = cfg.get("ignore_patterns", [])
     else:
-        ignore = config.get("ignore_patterns", []) + list(ignore)
+        ignore = cfg.get("ignore_patterns", []) + list(ignore)
 
     # Handle recursive and depth flags with proper priority:
     # 1. If --recursive is explicitly set (True/False), it takes highest priority
@@ -183,23 +183,23 @@ def main(
     # 3. Otherwise, fall back to config values
     if recursive is not None:
         # Explicit --recursive flag takes priority
-        depth = None if recursive else config.get("depth", 1)
+        depth = None if recursive else cfg.get("depth", 1)
     elif depth is not None:
         # Explicit --depth flag overrides recursive mode
         recursive = False
     else:
         # Fall back to config values
-        recursive = config.get("recursive", False)
-        depth = None if recursive else config.get("depth", 1)
+        recursive = cfg.get("recursive", False)
+        depth = None if recursive else cfg.get("depth", 1)
 
     # Instantiate the FileBrowser to scan and select files.
     file_browser = FileBrowser(
         directory,
-        recursive,
-        filters,
-        ignore,
+        bool(recursive),
+        list(filters or []),
+        list(ignore or []),
         depth,
-        encoding_model=config.get("tiktoken_model", "o200k_base"),
+        encoding_model=str(cfg.get("tiktoken_model", "o200k_base")),
     )
     selected_files, total_tokens = file_browser.scan_and_select_files(non_interactive)
 
@@ -208,12 +208,12 @@ def main(
 
     should_print_to_console = (
         output_explicitly_provided and output.lower() == "console"
-    ) or (not output_explicitly_provided and config.get("print_to_console", False))
+    ) or (not output_explicitly_provided and cfg.get("print_to_console", False))
 
     # Instantiate the OutputHandler to process and output file contents.
     output_handler = OutputHandler(
         directory=directory,
-        copy_to_clipboard=config.get("copy_to_clipboard", True),
+        copy_to_clipboard=cfg.get("copy_to_clipboard", True),
         print_to_console=should_print_to_console,
         ignore_patterns=ignore,
     )
@@ -222,7 +222,7 @@ def main(
     # Display unified success message
     if success:
         if output.lower() == "console":
-            if config.get("copy_to_clipboard", True):
+            if cfg.get("copy_to_clipboard", True):
                 console.print(
                     Panel(
                         f"[bold green]Structured content copied to clipboard[/bold green]\n"

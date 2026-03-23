@@ -1,6 +1,5 @@
-from typer.testing import CliRunner
-
 from cmdc import cli
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

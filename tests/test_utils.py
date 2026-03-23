@@ -1,9 +1,8 @@
 from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
-from rich.tree import Tree
-
 from cmdc.utils import build_directory_tree, clear_console, count_tokens
+from rich.tree import Tree
 
 
 def test_count_tokens_basic():

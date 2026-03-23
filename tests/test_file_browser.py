@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from cmdc.file_browser import FileBrowser
 from cmdc.utils import count_tokens
 

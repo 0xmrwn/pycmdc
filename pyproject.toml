@@ -1,37 +1,63 @@
-[tool.poetry]
+[project]
 name = "pycmdc"
 version = "1.3.0"
 description = "Ditch the copy-paste madness - browse, select, and format code for LLMs, keyboard-only."
-authors = ["0xmrwn <niches-anode0k@icloud.com>"]
-license = "MIT"
 readme = "README.md"
-packages = [
-    { include = "cmdc" }
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "0xmrwn", email = "niches-anode0k@icloud.com" }]
+dependencies = [
+    "typer>=0.16.0,<0.17.0",
+    "rich>=14.0.0,<15.0.0",
+    "inquirerpy>=0.3.4,<0.4.0",
+    "pyperclip>=1.9.0,<2.0.0",
+    "toml>=0.10.2,<0.11.0",
+    "tiktoken>=0.9.0,<1.0.0",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<4.0"
-typer = ">=0.16.0,<0.17.0"
-rich = ">=14.0.0,<14.1.0"
-inquirerpy = ">=0.3.4,<0.4.0"
-pyperclip = ">=1.9.0,<2.0.0"
-toml = ">=0.10.2,<0.11.0"
-tiktoken = "^0.9.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 cmdc = "cmdc.__main__:app"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-commitizen = "^4.1.1"
+[dependency-groups]
+dev = [
+    "ruff>=0.12",
+    "pyright>=1.1",
+    "pytest>=8",
+    "commitizen>=4.1",
+    "pre-commit>=4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cmdc"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version_provider = "poetry"
+version_provider = "pep621"
 changelog = "CHANGELOG.md"
 update_changelog_on_bump = true
 bump_message = "chore(release): bump cmdc version to $new_version [skip ci]"
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-config --strict-markers --tb=short"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.9"
+reportPrivateImportUsage = false
+
+[tool.ruff]
+target-version = "py39"
+src = ["cmdc", "tests"]
+exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "W", "I", "UP", "B"]
+ignore = ["B008"]
+
+[tool.ruff.format]
+docstring-code-format = true
