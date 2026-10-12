@@ -1,7 +1,7 @@
 import fnmatch
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
 
 import typer
 from InquirerPy import inquirer
@@ -43,9 +43,9 @@ class FileBrowser:
         self,
         directory: Path,
         recursive: bool,
-        filters: List[str],
-        ignore_patterns: List[str],
-        depth: Optional[int] = None,
+        filters: list[str],
+        ignore_patterns: list[str],
+        depth: int | None = None,
         encoding_model: str = "o200k_base",
     ):
         self.directory = directory
@@ -62,7 +62,7 @@ class FileBrowser:
         """
         return display_str.split(" [")[0]
 
-    def _transform_selection(self, selected: List[str], token_counts: dict) -> str:
+    def _transform_selection(self, selected: list[str], token_counts: dict) -> str:
         """
         Transform the selection display to show file count and total token count.
         """
@@ -152,7 +152,7 @@ class FileBrowser:
             except PermissionError:
                 pass
 
-    def get_files(self) -> List[Path]:
+    def get_files(self) -> list[Path]:
         """
         Retrieve a list of files from the directory that match the filters
         and do not match the ignore patterns.
@@ -176,7 +176,7 @@ class FileBrowser:
             style_file=lambda x: f"[green]{x}[/green]",
         )
 
-    def scan_and_select_files(self, non_interactive: bool) -> Tuple[List[str], int]:
+    def scan_and_select_files(self, non_interactive: bool) -> tuple[list[str], int]:
         """
         Scan the directory and prompt the user to select files (unless in non-interactive mode).
         Returns:
