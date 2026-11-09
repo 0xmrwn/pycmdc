@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import List, Optional
 
 import toml
 import typer
@@ -45,7 +44,7 @@ class ConfigManager:
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def get_default_ignore_patterns() -> List[str]:
+    def get_default_ignore_patterns() -> list[str]:
         """Return the default list of ignore patterns."""
         return [
             ".git",
@@ -119,8 +118,7 @@ class ConfigManager:
         ).execute()
         try:
             default_depth = int(default_depth_str)
-            if default_depth < 1:
-                default_depth = 1
+            default_depth = max(default_depth, 1)
         except ValueError:
             default_depth = 1
 
@@ -261,7 +259,7 @@ class ConfigManager:
         return env_config
 
     @staticmethod
-    def get_gitignore_patterns(directory: Path) -> List[str]:
+    def get_gitignore_patterns(directory: Path) -> list[str]:
         """
         Parse .gitignore file in the given directory and return valid ignore patterns.
         Skips comments and empty lines.
@@ -296,7 +294,7 @@ class ConfigManager:
 
         return patterns
 
-    def load_config(self, directory: Optional[Path] = None) -> dict:
+    def load_config(self, directory: Path | None = None) -> dict:
         """
         Load configuration using a layered approach:
         1. Start with defaults
@@ -357,9 +355,7 @@ class ConfigManager:
             )
         except Exception as e:
             console.print(
-                Panel(
-                    f"[red]Error saving configuration:[/red]\n{str(e)}", title="Error"
-                )
+                Panel(f"[red]Error saving configuration:[/red]\n{e!s}", title="Error")
             )
             raise typer.Exit(1)
 
@@ -447,7 +443,7 @@ class ConfigManager:
         )
         console.print()
 
-    def add_ignore_patterns(self, new_patterns: List[str]) -> None:
+    def add_ignore_patterns(self, new_patterns: list[str]) -> None:
         """Add new patterns to the ignore list in the configuration."""
         self.ensure_config_dir()
 
