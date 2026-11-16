@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 import typer
 from rich.console import Console
@@ -69,12 +68,12 @@ def main(
         "--list-ignore",
         help="Display the full list of ignore patterns in a detailed view.",
     ),
-    add_ignore: Optional[List[str]] = typer.Option(
+    add_ignore: list[str] | None = typer.Option(
         None,
         "--add-ignore",
         help="Add new patterns to the ignore list in the configuration.",
     ),
-    directory: Optional[Path] = typer.Argument(
+    directory: Path | None = typer.Argument(
         None,
         exists=True,
         file_okay=False,
@@ -89,19 +88,19 @@ def main(
         "-o",
         help="Output mode: 'console' or a filename to save the extracted content.",
     ),
-    filters: Optional[List[str]] = typer.Option(
+    filters: list[str] | None = typer.Option(
         None,
         "--filters",
         "-f",
         help="Filter files by extension (e.g., .py .js).",
     ),
-    recursive: Optional[bool] = typer.Option(
+    recursive: bool | None = typer.Option(
         None,
         "--recursive",
         "-r",
         help="Recursively traverse subdirectories.",
     ),
-    ignore: Optional[List[str]] = typer.Option(
+    ignore: list[str] | None = typer.Option(
         None,
         "--ignore",
         "-i",
@@ -112,19 +111,19 @@ def main(
         "--non-interactive",
         help="Select all matching files without prompting.",
     ),
-    use_gitignore: Optional[bool] = typer.Option(
+    use_gitignore: bool | None = typer.Option(
         None,
         "--use-gitignore/--no-gitignore",
         help="Whether to use .gitignore files in scanned directories (overrides config).",
     ),
-    depth: Optional[int] = typer.Option(
+    depth: int | None = typer.Option(
         None,
         "--depth",
         "-d",
         help="Maximum depth for subdirectory exploration. "
         "Overrides config setting if provided and recursive mode is not used.",
     ),
-    encoding_model: Optional[str] = typer.Option(
+    encoding_model: str | None = typer.Option(
         "o200k_base",
         "--encoding-model",
         help="Token encoding model to use for token counting (overrides config).",
